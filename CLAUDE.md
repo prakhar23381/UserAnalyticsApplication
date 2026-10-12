@@ -70,7 +70,7 @@ npm -w server run seed -- --reset     # wipe + seed fake sessions — local DB o
 Local URLs: demo `http://localhost:4000/demo/` · dashboard `http://localhost:3000` · health `http://localhost:4000/health`.
 
 Toolchain facts that are easy to get wrong:
-- These scripts are created in TODO Phases 0, 1 and 4. Until then, they do not exist — check `package.json` before running one.
+- The dashboard scripts (`dev` for the dashboard, `build`, `typecheck`, `lint`) are created in TODO Phase 4. Until then, they do not exist — check `package.json` before running one.
 - There is no Python and no virtualenv. Flask is allowed by the spec, but this project doesn't use it.
 - Add dependencies with `npm i <pkg> -w server` or `-w dashboard` from `<root>`, never with `npm install` inside a workspace folder.
 - The server is ESM (`"type": "module"`), so relative imports need the `.js` extension.
@@ -117,8 +117,9 @@ Toolchain facts that are easy to get wrong:
 │   ├── public/
 │   │   ├── tracker.js            the tracking script, served as-is at /tracker.js
 │   │   └── demo/                 index.html, products.html, about.html, demo.css, demo.js (served at /demo/)
+│   ├── scripts/seed.js           `npm run seed`: fake demo sessions; `--reset` deletes only `seed_` sessions
 │   └── test/                     globalSetup.js, setup.js, factories.js, *.test.js (tracker.test.js: happy-dom)
-├── scratch/                      git-ignored; browser-check.mjs (headless Brave over CDP)
+├── scratch/                      git-ignored; browser-check.mjs, measure-layout.mjs (headless Brave over CDP)
 └── .gitignore
 ```
 
@@ -126,7 +127,6 @@ Planned, not yet created (full layout in `TODO.md` §1):
 
 ```text
 ├── README.md
-├── server/          scripts/seed.js
 └── dashboard/       Next.js dashboard; src/app, src/components, src/lib, .env.local.example
 ```
 

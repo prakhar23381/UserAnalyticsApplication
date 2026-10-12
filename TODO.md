@@ -73,12 +73,12 @@ CausalFunnel/
 │   │       ├── about.html       # long page (tests y-scroll)
 │   │       └── demo.css
 │   ├── scripts/
-│   │   └── seed.js              # fake sessions so the hosted dashboard isn't empty
+│   │   └── seed.js              # fake sessions so the hosted dashboard isn't empty ✅ exists
 │   └── test/
 │       ├── globalSetup.js       # one in-memory mongod per run
 │       ├── setup.js             # a database per test file
 │       ├── factories.js         # stored-event builders
-│       └── {app,normalizeUrl,validateEvent,events,sessions,pages,heatmap}.test.js
+│       └── {app,normalizeUrl,validateEvent,events,sessions,pages,heatmap,demo,tracker,seed}.test.js
 └── dashboard/
     ├── package.json
     ├── .env.local.example
@@ -131,17 +131,7 @@ decision; list them in the README as next steps.
 
 ## 5. Phase 3 — Demo pages (`server/public/demo/`)
 
-Pages and the tracker browser check are done (see `STATUS_LOG.md`). The seed script below is what remains.
-
-### 5.1 Seed script (`server/scripts/seed.js`) **[S]** — after the demo pages
-*Moved here from Phase 1: the clicks must cluster around the real button
-positions of these pages, and running it needs a local MongoDB.*
-- [ ] Generate ~40 sessions over the last 7 days across the 3 demo pages and 3 device sizes
-- [ ] Clicks clustered around real button positions (+ jitter) so the heatmap looks meaningful
-  (measure them with `scratch/browser-check.mjs`; at 1440 px the product buttons sit at y ≈ 549 and ≈ 927, the about-page CTA at y ≈ 2455 of 2707)
-- [ ] `--reset` flag to wipe the collection first (local DB only, CLAUDE.md §10)
-- [ ] `"seed"` script in `server/package.json` (the root `seed` script already forwards to it)
-- [ ] Insert through `validateEvent` so seeded events have exactly the shape of real ones
+Done, including the seed script (see `STATUS_LOG.md`).
 
 ---
 
@@ -258,7 +248,9 @@ Server tests were written with Phase 1 (see `STATUS_LOG.md`). New server code ad
   - note: free tier sleeps → first request ~30–50s (mention in README)
 - [ ] **[S] Vercel**: import repo, root dir `dashboard`, env `NEXT_PUBLIC_API_URL=https://<server>.onrender.com`
 - [ ] **[S]** Set `PRODUCTION_DASHBOARD_URL` in `server/public/demo/demo.js` (until then the footer dashboard link is hidden off localhost). The tracker needs no change: demo pages load the same-origin `/tracker.js`
-- [ ] **[S]** Run `npm run seed` against Atlas once so reviewers see data immediately
+- [ ] **[S]** Seed production once so reviewers see data immediately:
+  `MONGODB_URI=<atlas uri> npm run seed -- --base-url https://<server>.onrender.com --allow-remote`
+  (an env var beats `server/.env`; needs the user's double confirmation, CLAUDE.md §10)
 - [ ] **[S]** Production smoke test: demo → dashboard → heatmap iframe loads (frameguard/CSP OK) → CORS OK
 
 ---
@@ -277,6 +269,7 @@ Server tests were written with Phase 1 (see `STATUS_LOG.md`). New server code ad
 - [ ] **[M]** Tech stack (table from §0)
 - [ ] **[M]** Setup steps: prerequisites (Node 22+, Docker) → `docker compose up -d` → copy env files → `npm install` → `npm run dev` → `npm run seed` → URLs
 - [ ] **[S]** Embedding the tracker (snippet + what's collected)
+- [ ] **[S]** Seed script: what it generates; `--reset` deletes only `seed_` sessions; `--sessions`, `--base-url`, `--allow-remote`; click positions measured at 1280 / 768 / 375, so they need re-measuring if the demo pages change
 - [ ] **[S]** API reference (5 endpoints, params, sample responses). Include: `POST /api/events` also returns `errors: [{ index, error }]` (first 10) when events are rejected; `GET /api/pages` is wrapped as `{ data: [...] }`; repeated query params → 400; error bodies are `{ error }`
 - [ ] **[S]** Data model + indexes and why
 - [ ] **[M]** Assumptions & trade-offs:

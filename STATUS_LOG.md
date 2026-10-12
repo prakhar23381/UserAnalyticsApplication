@@ -2,6 +2,38 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-13 — Phase 3 closed: seed script
+- `b19e238` `server/scripts/seed.js`, run as `npm run seed` (root or `-w server`).
+  - **Journeys:** each session has an entry page and a source (direct, Google,
+    `?utm_source=newsletter|instagram`, some on `/demo/index.html`). Visitors
+    move through real links and CTAs, add products by popularity, sign up for
+    the newsletter, bounce (about 40% are single-page), and sometimes click a
+    product photo. The cart link shows the running count ("Cart 3"). Events
+    are 2–60 s apart, over the last 7 days.
+  - **Positions:** each click lands inside an element box measured in headless
+    Brave at 1280 / 768 / 375 with scrollbars hidden
+    (`scratch/measure-layout.mjs`, git-ignored). Targets are exactly what
+    `tracker.js` records.
+  - **Shape:** every event goes through `validateEvent`, then gets
+    `user_agent` and `received_at` as `POST /api/events` adds them. The script
+    throws if `validateEvent` rejects one.
+  - **Safety:** session ids start with `seed_`, and `--reset` deletes only
+    those (Seed D1; `IXSCAN` on `session_id_1_timestamp_1`). A non-localhost
+    URI is refused without `--allow-remote`, and credentials are never
+    printed. `--sessions N` (default 40), `--base-url` (default
+    `http://localhost:4000`).
+  - **Tests:** 22 in `test/seed.test.js`, using a seeded PRNG: validity, ids,
+    ordering, coverage at the reference widths (Seed D2), click-in-element,
+    link → `page_view` with referrer, cart count, reset scope, URI guard.
+    145 tests in total.
+- Verified on the local `causalfunnel` database: two `--reset` runs. The 36
+  real events from Phase 3 survived both, and the second run replaced the 156
+  seeded events instead of adding to them. `/api/sessions` (44 sessions),
+  `/api/pages`, `/api/heatmap` for all 3 devices, and a seeded journey through
+  `/api/sessions/:id/events` all read back correctly.
+- Decisions D1 (reset scope) and D2 (reference widths only) are recorded in
+  the recovery context §4.
+
 ## 2026-10-12 — Phase 3: demo pages + tracker browser check
 - `964f3f7` the root `test` script forwards arguments (`npm test --
   --project tracker`). TODO: README trade-off for the tracker's iframe guard.

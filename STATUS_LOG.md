@@ -2,6 +2,21 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-12 — Housekeeping
+- Deleted the stray `~/.cache/mongodb-binaries` (148 MB `mongod`, from the
+  Phase 1 smoke-test incident) after the user confirmed twice. It held only
+  `mongod-arm64-darwin-8.2.6` and its `.md5`.
+- Found that Homebrew on this Mac is the Intel install under Rosetta (see
+  recovery context §3).
+- The user installed OrbStack (Docker 29.8.2 arm64, Compose v5.5.0).
+  `docker compose config` validates `docker-compose.yml`. `docker compose
+  up -d` started MongoDB 7.0.43 on :27017.
+- First run against a real MongoDB (database `causalfunnel_smoke`, URI
+  passed inline): startup builds the 3 indexes; curl checks pass for
+  `/health` headers, JSON and text/plain ingestion (with a reported
+  reject), URL normalization, device buckets, sessions, journey, pages,
+  heatmap and read-CORS blocking. SIGTERM shutdown exits 0.
+
 ## 2026-10-12 — Phase 1: server (Express + MongoDB)
 - `server` workspace via `npm init -w server` from the root: ESM, `engines`
   `>=22.12` (root too, for `vitest@5`). Deps: express 5.3, mongoose 9.11,

@@ -11,7 +11,7 @@
     "seed": "npm -w server run seed --"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   },
   "devDependencies": {
     "concurrently": "^10.0.6"

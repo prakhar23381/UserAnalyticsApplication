@@ -38,6 +38,14 @@ describe('app', () => {
     expect(res.headers['cross-origin-resource-policy']).toBe('cross-origin');
   });
 
+  it('serves /tracker.js as JavaScript that any site may load', async () => {
+    const res = await request(app).get('/tracker.js');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/^(text|application)\/javascript/);
+    expect(res.headers['cross-origin-resource-policy']).toBe('cross-origin');
+    expect(res.text).toContain('__cfTracker');
+  });
+
   it('keeps upgrade-insecure-requests in production', async () => {
     const prod = createApp({ dashboardOrigins: [DASHBOARD], isProduction: true });
     const res = await request(prod).get('/health');

@@ -21,6 +21,7 @@
     "mongoose": "^9.11.1"
   },
   "devDependencies": {
+    "happy-dom": "^21.0.1",
     "mongodb-memory-server": "^11.3.0",
     "supertest": "^7.3.1",
     "vitest": "^5.0.4"

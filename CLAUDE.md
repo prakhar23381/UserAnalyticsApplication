@@ -61,7 +61,8 @@ npm run dev                           # API :4000 + dashboard :3000 (concurrentl
 npm -w dashboard run build            # production build -> dashboard/.next/
 npm -w dashboard run typecheck        # tsc --noEmit
 npm -w dashboard run lint             # eslint
-npm test                              # server tests
+npm test                              # server tests: Vitest projects `api` + `tracker`
+npm -w server test -- --project tracker   # one project only (not `npm test -- --project …`)
 npm -w server run dev                 # API only (node --watch); also serves /tracker.js and /demo/
 npm -w server run seed -- --reset     # wipe + seed fake sessions — local DB only (§10)
 ```
@@ -76,6 +77,7 @@ Toolchain facts that are easy to get wrong:
 - When an npm-workspace script takes arguments, they follow the workspace command: `npm -w server run seed -- --reset`.
 - `npm install` downloads a `mongod` binary (~150 MB) for mongodb-memory-server into `<root>/node_modules/.cache/mongodb-memory-server`. Run anything that uses mongodb-memory-server through an npm script. A plain `node` run from `server/` downloads a second copy to `~/.cache/mongodb-binaries`, outside the repo, unless `MONGOMS_DOWNLOAD_DIR` points at the repo cache.
 - Server tests need no running MongoDB: one in-memory `mongod` per run, one database per test file.
+- Tracker tests run `public/tracker.js` in happy-dom, loaded through a real `<script src>` (a virtual server maps `http://localhost:4000/` to `public/`). happy-dom has no layout: `pageX`, `scrollWidth` and `getBoundingClientRect()` are 0 unless a test sets them.
 
 **Commits and pushes.**
 - **During the day:** commit locally after each major implementation, with a
@@ -109,7 +111,8 @@ Toolchain facts that are easy to get wrong:
 │   │   ├── lib/                  normalizeUrl.js, device.js, validateEvent.js
 │   │   ├── middleware/           cors.js (ingestCors, readCors), errorHandler.js
 │   │   └── routes/               events.js, sessions.js, pages.js, heatmap.js
-│   └── test/                     globalSetup.js, setup.js, factories.js, *.test.js
+│   ├── public/tracker.js         the tracking script, served as-is at /tracker.js
+│   └── test/                     globalSetup.js, setup.js, factories.js, *.test.js (tracker.test.js: happy-dom)
 └── .gitignore
 ```
 
@@ -117,7 +120,7 @@ Planned, not yet created (full layout in `TODO.md` §1):
 
 ```text
 ├── README.md
-├── server/          public/ (tracker.js, demo/), scripts/seed.js
+├── server/          public/demo/, scripts/seed.js
 └── dashboard/       Next.js dashboard; src/app, src/components, src/lib, .env.local.example
 ```
 
@@ -165,9 +168,12 @@ trade-offs in the README instead.
   inactivity timeout, with an in-memory fallback when storage is blocked.
   `session_id` must match `^[A-Za-z0-9_-]{1,64}$` (`SESSION_ID_RE` in
   `validateEvent.js`); the server rejects anything else.
-- **Tracker:** zero dependencies; never throws into the host page; batches
-  ≤ 50 events as `{ events: [...] }`; listens in the capture phase; does
-  nothing when `?cf_preview=1` is set or it's running inside an iframe.
+- **Tracker:** zero dependencies; never throws into the host page; sends
+  batches of ≤ 10 events as `{ events: [...] }` (API limit: 50); listens in
+  the capture phase; does nothing when `?cf_preview=1` is set or it's running
+  inside an iframe. Privacy: element `text` only for links, buttons and
+  labels; form field values are never read. Every event it sends must pass
+  `validateEvent` (`tracker.test.js` checks this).
 - **CORS:** `POST /api/events` is open (`*`, no credentials). Read endpoints
   allow only `DASHBOARD_ORIGIN` (a comma-separated list). The same origins are
   the CSP `frame-ancestors`, which lets the dashboard iframe the demo pages.

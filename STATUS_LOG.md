@@ -2,6 +2,38 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-12 — Phase 2: tracker
+- `154f048` `server/public/tracker.js` (served at `/tracker.js`): zero
+  dependencies, ES5 syntax.
+  - **Events:** `page_view` on load and on back/forward-cache restores.
+    Capture-phase clicks with pageX/pageY, viewport and document size, and
+    the nearest interactive element. Text is recorded for links, buttons and
+    labels only; form values never. Keyboard clicks are placed at the
+    element's centre.
+  - **Session:** localStorage `cf_session` with a 30-min inactivity
+    rollover. In-memory fallback when storage is blocked. `randomUUID` with
+    a fallback id that fits the API's alphabet.
+  - **Sending:** batches at 10 events, 5 s, or on `pagehide` /
+    `visibilitychange`. `sendBeacon` as text/plain, with a `fetch`
+    keepalive fallback.
+  - **Safety:** off in iframes and with `?cf_preview=1`. Runs once if
+    included twice. Never throws.
+- Size: 7.3 KB with comments, 5.1 KB code only, **2.9 KB gzipped**. TODO's
+  "< 3 KB unminified-ish" target is met only gzipped; no minification,
+  since there's no build step.
+- Tests: `happy-dom` 21 devDependency. Vitest split into projects `api`
+  (in-memory MongoDB) and `tracker` (happy-dom, no DB). 24 tracker tests
+  load the real file via `<script src>`. One asserts that every event the
+  tracker sends passes the API's `validateEvent`. Plus an app test that
+  `/tracker.js` is served as JavaScript with CORP `cross-origin`.
+  110 tests in total.
+- Mutation-checked the tracker tests:
+  - An unguarded throwing click handler: "never throws" caught 12 errors.
+  - The bubble phase instead of capture, a missing iframe guard, and a
+    60-min timeout each failed their matching test.
+- Not done: a real-browser check; it moves to the end of Phase 3 (TODO §5).
+  Stretch items (DNT, SPA, `event_id`) skipped by decision.
+
 ## 2026-10-12 — Housekeeping
 - Deleted the stray `~/.cache/mongodb-binaries` (148 MB `mongod`, from the
   Phase 1 smoke-test incident) after the user confirmed twice. It held only

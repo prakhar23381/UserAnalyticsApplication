@@ -66,7 +66,7 @@ CausalFunnel/
 │   │       ├── cors.js
 │   │       └── errorHandler.js
 │   ├── public/
-│   │   ├── tracker.js           # THE tracking script (served at /tracker.js)
+│   │   ├── tracker.js           # THE tracking script (served at /tracker.js) ✅ exists
 │   │   └── demo/
 │   │       ├── index.html       # landing
 │   │       ├── products.html    # product grid, add-to-cart buttons
@@ -120,44 +120,12 @@ Done except the stretch item below (see `STATUS_LOG.md`).
 
 ## 4. Phase 2 — Tracker (`server/public/tracker.js`)
 
-- [ ] **[M]** IIFE, zero deps, guarded against double-load (`if (window.__cfTracker) return;`)
-- [ ] **[M]** Config from its own script tag via `document.currentScript`:
-  ```html
-  <script src="https://<server>/tracker.js" data-endpoint="https://<server>/api/events" defer></script>
-  ```
-  Default endpoint = script origin + `/api/events`.
-- [ ] **[M]** Session id:
-  - localStorage key `cf_session` → `{ id, last_activity }`
-  - new id if missing or `now - last_activity > 30 min`
-  - update `last_activity` on every event
-  - id: `crypto.randomUUID()` with `Math.random` fallback (randomUUID needs a secure context).
-    The server rejects ids that don't match `^[A-Za-z0-9_-]{1,64}$`, so the fallback must stay within that alphabet
-  - wrap storage in try/catch → in-memory fallback (Safari private mode / blocked storage)
-- [ ] **[M]** `page_view` on load
-- [ ] **[M]** `click` via `document.addEventListener('click', fn, true)` — **capture phase** so page code calling `stopPropagation` can't hide clicks. Capture:
-  - `x: e.pageX`, `y: e.pageY`
-  - `viewport_w/h: innerWidth/innerHeight`
-  - `doc_w/h: documentElement.scrollWidth/scrollHeight`
-  - **[S]** `target: { tag, id, classes, text }` (text trimmed to 80 chars) → readable journey
-- [ ] **[M]** Every event: `session_id, type, page_url: location.href, timestamp: new Date().toISOString(), referrer`
-- [ ] **[S]** Queue + batch: flush when queue ≥ 10, every 5s, and on `visibilitychange → hidden` / `pagehide`
-- [ ] **[M]** Send without losing events on navigation:
-  ```js
-  function send(events) {
-    const body = JSON.stringify({ events });
-    // text/plain = CORS-safelisted → no preflight, works with sendBeacon cross-origin
-    const blob = new Blob([body], { type: 'text/plain' });
-    if (navigator.sendBeacon && navigator.sendBeacon(endpoint, blob)) return;
-    fetch(endpoint, { method: 'POST', body, keepalive: true,
-                      headers: { 'Content-Type': 'text/plain' } }).catch(() => {});
-  }
-  ```
-- [ ] **[M]** Never throw into the host page — wrap handlers in try/catch
-- [ ] **[S]** **Disable tracking in heatmap previews**: skip if `?cf_preview=1` in URL or `window.top !== window.self` (otherwise the dashboard's iframe pollutes data with fake page_views)
-- [ ] **[X]** Respect `navigator.doNotTrack === '1'`
+Done except the stretch items below (see `STATUS_LOG.md`). Skipped for now by
+decision; list them in the README as next steps.
+
+- [ ] **[X]** Respect `navigator.doNotTrack === '1'` (deprecated; Safari dropped it)
 - [ ] **[X]** SPA support: patch `history.pushState` + listen to `popstate` → emit `page_view`
 - [ ] **[X]** Client `event_id` + unique index → idempotent ingestion on retries
-- [ ] **[S]** Keep it small (target < 3 KB unminified-ish); add a header comment with the embed snippet
 
 ---
 
@@ -167,7 +135,12 @@ Done except the stretch item below (see `STATUS_LOG.md`).
   - `index.html` — hero, 2 CTA buttons ("Shop now", "Learn more")
   - `products.html` — grid of 6–8 product cards each with "Add to cart"
   - `about.html` — long content (> 2 viewports) with a CTA near the bottom → tests `y` beyond the fold
-- [ ] **[M]** Each page includes the tracker `<script ... defer>`
+- [ ] **[M]** Each page includes the tracker `<script src="/tracker.js" defer>`
+- [ ] **[M]** Browser check of the tracker (moved here from Phase 2; CLAUDE.md §6). Chrome isn't
+  installed on the dev Mac: choose between a manual checklist for the user and Playwright.
+  Check: page_view on load; clicks queued and sent as `text/plain` with 202; a beacon on
+  navigation; nothing sent with `?cf_preview=1`; no console errors on the page; events land in
+  `/api/sessions`
 - [ ] **[S]** Centered `max-width` layout, distinct visual blocks → heatmap overlay is recognizable
 - [ ] **[S]** Small "View dashboard →" link in the footer for reviewers
 - [ ] **[S]** Responsive CSS so mobile vs desktop heatmaps actually differ

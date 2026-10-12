@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Acme Roasters · demo store</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="demo.css">
+  <!-- CausalFunnel tracker: page views and clicks go to this server's /api/events -->
+  <script src="/tracker.js" defer></script>
+  <script src="demo.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <a class="logo" href="./">Acme Roasters</a>
+      <nav aria-label="Main">
+        <a href="./" aria-current="page">Home</a>
+        <a href="products.html">Products</a>
+        <a href="about.html">About</a>
+      </nav>
+      <a class="cart" id="cart-link" href="products.html">Cart <span class="cart-count" data-cart-count>0</span></a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <p class="eyebrow">Small-batch coffee, roasted every week</p>
+        <h1>Coffee worth getting up for.</h1>
+        <p class="lead">
+          We buy green coffee from farms we know by name, roast it in small
+          batches and ship it within two days of roasting.
+        </p>
+        <div class="actions">
+          <a class="btn btn-primary" id="cta-shop" href="products.html">Shop now</a>
+          <a class="btn btn-secondary" id="cta-learn" href="about.html">Learn more</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="container features" aria-label="Why Acme">
+      <article class="feature">
+        <h2>Roasted to order</h2>
+        <p>Every bag is roasted after you order it, never before. You get it at its best.</p>
+      </article>
+      <article class="feature">
+        <h2>Traceable beans</h2>
+        <p>Each coffee lists the farm, the altitude and the harvest month on the bag.</p>
+      </article>
+      <article class="feature">
+        <h2>Free returns</h2>
+        <p>Not your cup? Send back the rest of the bag and we'll pick another with you.</p>
+      </article>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Acme Roasters is a demo store for the CausalFunnel analytics assignment. Nothing here is for sale.</p>
+      <a id="dashboard-link" data-dashboard-link href="http://localhost:3000">View dashboard →</a>
+    </div>
+  </footer>
+</body>
+</html>

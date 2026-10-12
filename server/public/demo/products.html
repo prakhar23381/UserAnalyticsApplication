@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Products · Acme Roasters</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="demo.css">
+  <!-- CausalFunnel tracker: page views and clicks go to this server's /api/events -->
+  <script src="/tracker.js" defer></script>
+  <script src="demo.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <a class="logo" href="./">Acme Roasters</a>
+      <nav aria-label="Main">
+        <a href="./">Home</a>
+        <a href="products.html" aria-current="page">Products</a>
+        <a href="about.html">About</a>
+      </nav>
+      <a class="cart" id="cart-link" href="products.html">Cart <span class="cart-count" data-cart-count>0</span></a>
+    </div>
+  </header>
+
+  <main>
+    <div class="container page-title">
+      <h1>Our coffee</h1>
+      <p class="lead">Whole bean, 250 g bags. Roasted the week you order.</p>
+    </div>
+
+    <section class="container products" aria-label="Products">
+      <article class="product">
+        <div class="product-image tone-1" aria-hidden="true">House Blend</div>
+        <h2>House Blend</h2>
+        <p class="notes">Chocolate, caramel, toasted nuts</p>
+        <p class="price">$14</p>
+        <button class="btn btn-primary add-to-cart" id="add-house-blend" type="button">Add to cart</button>
+      </article>
+      <article class="product">
+        <div class="product-image tone-2" aria-hidden="true">Ethiopia Yirgacheffe</div>
+        <h2>Ethiopia Yirgacheffe</h2>
+        <p class="notes">Jasmine, lemon, bergamot</p>
+        <p class="price">$18</p>
+        <button class="btn btn-primary add-to-cart" id="add-ethiopia" type="button">Add to cart</button>
+      </article>
+      <article class="product">
+        <div class="product-image tone-3" aria-hidden="true">Colombia Huila</div>
+        <h2>Colombia Huila</h2>
+        <p class="notes">Red apple, panela, cocoa</p>
+        <p class="price">$16</p>
+        <button class="btn btn-primary add-to-cart" id="add-colombia" type="button">Add to cart</button>
+      </article>
+      <article class="product">
+        <div class="product-image tone-4" aria-hidden="true">Swiss Water Decaf</div>
+        <h2>Swiss Water Decaf</h2>
+        <p class="notes">Milk chocolate, almond</p>
+        <p class="price">$15</p>
+        <button class="btn btn-primary add-to-cart" id="add-decaf" type="button">Add to cart</button>
+      </article>
+      <article class="product">
+        <div class="product-image tone-5" aria-hidden="true">Espresso Roast</div>
+        <h2>Espresso Roast</h2>
+        <p class="notes">Dark chocolate, molasses</p>
+        <p class="price">$16</p>
+        <button class="btn btn-primary add-to-cart" id="add-espresso" type="button">Add to cart</button>
+      </article>
+      <article class="product">
+        <div class="product-image tone-6" aria-hidden="true">Cold Brew Pack</div>
+        <h2>Cold Brew Pack</h2>
+        <p class="notes">Four pouches, steep overnight</p>
+        <p class="price">$12</p>
+        <button class="btn btn-primary add-to-cart" id="add-cold-brew" type="button">Add to cart</button>
+      </article>
+      <article class="product">
+        <div class="product-image tone-7" aria-hidden="true">Pour-over Kettle</div>
+        <h2>Pour-over Kettle</h2>
+        <p class="notes">Gooseneck, 1 litre, stovetop</p>
+        <p class="price">$45</p>
+        <button class="btn btn-primary add-to-cart" id="add-kettle" type="button">Add to cart</button>
+      </article>
+      <article class="product">
+        <div class="product-image tone-8" aria-hidden="true">Ceramic Mug</div>
+        <h2>Ceramic Mug</h2>
+        <p class="notes">Handmade, 350 ml</p>
+        <p class="price">$12</p>
+        <button class="btn btn-primary add-to-cart" id="add-mug" type="button">Add to cart</button>
+      </article>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Acme Roasters is a demo store for the CausalFunnel analytics assignment. Nothing here is for sale.</p>
+      <a id="dashboard-link" data-dashboard-link href="http://localhost:3000">View dashboard →</a>
+    </div>
+  </footer>
+</body>
+</html>

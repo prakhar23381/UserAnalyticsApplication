@@ -1,0 +1,326 @@
+/* Acme Roasters demo store. Breakpoints match the API's device buckets
+   (<768 mobile, 768-1023 tablet, >=1024 desktop), so each bucket gets its
+   own layout and its own heatmap. */
+
+:root {
+  --bg: #faf7f2;
+  --surface: #ffffff;
+  --text: #2b2118;
+  --muted: #6f6257;
+  --accent: #b5562b;
+  --accent-dark: #8f4220;
+  --border: #e8e0d6;
+  --radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.6 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+}
+
+a {
+  color: var(--accent-dark);
+}
+
+.container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ---- header (not sticky: a sticky header would put its clicks at
+   different document heights depending on scroll) ---- */
+
+.site-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.logo {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.nav nav {
+  display: flex;
+  gap: 18px;
+}
+
+.nav nav a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.nav nav a[aria-current='page'] {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.cart {
+  margin-left: auto;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.cart-count {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* ---- buttons ---- */
+
+.btn {
+  display: inline-block;
+  padding: 12px 22px;
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--accent-dark);
+}
+
+/* ---- home ---- */
+
+.hero {
+  padding: 72px 0 56px;
+  background: linear-gradient(135deg, #f3e3d3, #faf7f2 60%);
+}
+
+.hero h1 {
+  max-width: 14em;
+  margin: 0 0 16px;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent-dark);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.85rem;
+}
+
+.lead {
+  max-width: 34em;
+  color: var(--muted);
+  font-size: 1.15rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.features {
+  display: grid;
+  gap: 20px;
+  padding-top: 48px;
+  padding-bottom: 64px;
+}
+
+.feature {
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* ---- products ---- */
+
+.page-title {
+  padding: 40px 0 8px;
+}
+
+.page-title h1 {
+  margin: 0;
+}
+
+.products {
+  display: grid;
+  gap: 20px;
+  padding-top: 24px;
+  padding-bottom: 64px;
+}
+
+.product {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.product h2 {
+  margin: 14px 0 4px;
+  font-size: 1.1rem;
+}
+
+.product .notes {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.product .price {
+  margin: 8px 0 14px;
+  font-weight: 700;
+}
+
+.product .btn {
+  margin-top: auto;
+}
+
+.product-image {
+  display: grid;
+  place-items: center;
+  height: 160px;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 700;
+  text-align: center;
+}
+
+.tone-1 { background: linear-gradient(135deg, #6b3e26, #a0673f); }
+.tone-2 { background: linear-gradient(135deg, #8a5a2b, #d19a55); }
+.tone-3 { background: linear-gradient(135deg, #4e3b2a, #8c6b4f); }
+.tone-4 { background: linear-gradient(135deg, #7d8c6a, #b7c49a); }
+.tone-5 { background: linear-gradient(135deg, #2f2622, #6a4b3c); }
+.tone-6 { background: linear-gradient(135deg, #36506b, #6f93b8); }
+.tone-7 { background: linear-gradient(135deg, #59606b, #9aa3ad); }
+.tone-8 { background: linear-gradient(135deg, #a8553a, #e2a07f); }
+
+/* ---- about ---- */
+
+.story {
+  max-width: 760px;
+  padding-bottom: 64px;
+}
+
+.story section {
+  margin-top: 48px;
+}
+
+.story-image {
+  display: grid;
+  place-items: center;
+  height: 320px;
+  margin: 24px 0;
+  border-radius: var(--radius);
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 700;
+}
+
+.newsletter {
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.newsletter form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.newsletter input {
+  flex: 1 1 220px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font: inherit;
+}
+
+.closing {
+  padding: 40px 24px;
+  text-align: center;
+  background: #f3e3d3;
+  border-radius: var(--radius);
+}
+
+/* ---- footer ---- */
+
+.site-footer {
+  padding: 28px 0;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.site-footer .container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ---- breakpoints = device buckets ---- */
+
+@media (min-width: 768px) {
+  .features {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .products {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .products {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .hero {
+    padding: 112px 0 88px;
+  }
+}

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>About · Acme Roasters</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="demo.css">
+  <!-- CausalFunnel tracker: page views and clicks go to this server's /api/events -->
+  <script src="/tracker.js" defer></script>
+  <script src="demo.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <a class="logo" href="./">Acme Roasters</a>
+      <nav aria-label="Main">
+        <a href="./">Home</a>
+        <a href="products.html">Products</a>
+        <a href="about.html" aria-current="page">About</a>
+      </nav>
+      <a class="cart" id="cart-link" href="products.html">Cart <span class="cart-count" data-cart-count>0</span></a>
+    </div>
+  </header>
+
+  <!-- Deliberately long (several screens), with the main call to action at the
+       bottom: heatmaps should show clicks far below the fold. -->
+  <main class="container story">
+    <div class="page-title">
+      <h1>About Acme Roasters</h1>
+      <p class="lead">Three people, one roaster and a lot of tasting spoons.</p>
+    </div>
+
+    <section>
+      <h2>Our story</h2>
+      <p>
+        Acme started in a garage with a second-hand two-kilo roaster and a
+        simple rule: never sell a coffee we wouldn't drink every morning
+        ourselves. Ten years later the roaster is bigger, the garage is a
+        warehouse, and the rule hasn't changed.
+      </p>
+      <p>
+        We roast four days a week. Orders that come in before noon are
+        roasted the next morning and shipped that afternoon, so the coffee
+        reaches you while it is still at its best.
+      </p>
+      <div class="story-image tone-1" aria-hidden="true">The roastery</div>
+    </section>
+
+    <section>
+      <h2>How we roast</h2>
+      <p>
+        Every coffee gets its own roast profile. We roast a sample batch,
+        taste it on three different brewers, adjust, and repeat until the
+        coffee tastes like the farm it came from rather than like the roast.
+      </p>
+      <p>
+        Lighter roasts keep the fruit and florals of washed African coffees.
+        Our espresso is roasted longer for body and sweetness in milk drinks,
+        but never to the point where it turns bitter.
+      </p>
+      <div class="story-image tone-3" aria-hidden="true">Cupping table</div>
+    </section>
+
+    <section>
+      <h2>Where our coffee comes from</h2>
+      <p>
+        We buy directly from eleven farms and two cooperatives, most of them
+        for five years or more. We pay above Fair Trade minimums and publish
+        what we pay per kilo on every product page.
+      </p>
+      <p>
+        Long relationships let farmers plan ahead: they know what we will buy
+        next year, and we can work with them on new processing experiments
+        instead of chasing whatever is fashionable.
+      </p>
+      <div class="story-image tone-6" aria-hidden="true">Harvest in Huila</div>
+    </section>
+
+    <section class="newsletter" id="newsletter">
+      <h2>The roast list</h2>
+      <p>One email a month with new arrivals. No spam, unsubscribe anytime.</p>
+      <!-- POST, not GET, so a typed address never ends up in a URL (or in a tracked page_url). -->
+      <form data-newsletter method="post" action="about.html">
+        <label for="newsletter-email">Email address</label>
+        <input id="newsletter-email" name="email" type="email" placeholder="you@example.com" required>
+        <button class="btn btn-primary" id="newsletter-submit" type="submit">Subscribe</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Visit us</h2>
+      <p>
+        The roastery opens to visitors on Saturday mornings. Come for a
+        cupping, ask us anything, and leave with a bag roasted that week.
+      </p>
+      <div class="closing">
+        <h3>Ready to taste it?</h3>
+        <a class="btn btn-primary" id="cta-visit-shop" href="products.html">Visit the shop</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Acme Roasters is a demo store for the CausalFunnel analytics assignment. Nothing here is for sale.</p>
+      <a id="dashboard-link" data-dashboard-link href="http://localhost:3000">View dashboard →</a>
+    </div>
+  </footer>
+</body>
+</html>

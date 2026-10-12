@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+
+# build / test output
+.next/
+out/
+coverage/
+
+# env (only *.example files are committed)
+.env
+.env.local
+.env.*.local
+
+# agent diagnostics & scratch (CLAUDE.md §4)
+artifacts/
+scratch/
+
+# personal Claude Code settings
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+*.log

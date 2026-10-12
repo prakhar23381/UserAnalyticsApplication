@@ -62,7 +62,7 @@ npm -w dashboard run build            # production build -> dashboard/.next/
 npm -w dashboard run typecheck        # tsc --noEmit
 npm -w dashboard run lint             # eslint
 npm test                              # server tests: Vitest projects `api` + `tracker`
-npm -w server test -- --project tracker   # one project only (not `npm test -- --project …`)
+npm test -- --project tracker         # one Vitest project only (args are forwarded)
 npm -w server run dev                 # API only (node --watch); also serves /tracker.js and /demo/
 npm -w server run seed -- --reset     # wipe + seed fake sessions — local DB only (§10)
 ```

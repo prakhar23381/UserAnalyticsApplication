@@ -300,6 +300,7 @@ Server tests were written with Phase 1 (see `STATUS_LOG.md`). New server code ad
   - No auth, no multi-site `site_id`, open ingestion endpoint (rate-limit only if implemented)
   - Atlas IP allowlist open for free-tier hosting
   - Polling (5s) instead of websockets
+  - The tracker does nothing inside an iframe (that keeps the heatmap preview from recording visits), so a customer page legitimately shown in an iframe isn't tracked either
 - [ ] **[S]** "What I'd do next": site_id + API keys, element-relative heatmaps, scroll-depth events, retention via TTL index, websockets, bot filtering
 
 ---

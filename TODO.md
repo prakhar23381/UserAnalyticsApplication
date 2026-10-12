@@ -67,7 +67,7 @@ CausalFunnel/
 │   │       └── errorHandler.js
 │   ├── public/
 │   │   ├── tracker.js           # THE tracking script (served at /tracker.js) ✅ exists
-│   │   └── demo/
+│   │   └── demo/                # ✅ exists (+ demo.js)
 │   │       ├── index.html       # landing
 │   │       ├── products.html    # product grid, add-to-cart buttons
 │   │       ├── about.html       # long page (tests y-scroll)
@@ -131,25 +131,14 @@ decision; list them in the README as next steps.
 
 ## 5. Phase 3 — Demo pages (`server/public/demo/`)
 
-- [ ] **[M]** 3 static pages sharing `demo.css` and a nav (Home · Products · About) → generates multi-page journeys
-  - `index.html` — hero, 2 CTA buttons ("Shop now", "Learn more")
-  - `products.html` — grid of 6–8 product cards each with "Add to cart"
-  - `about.html` — long content (> 2 viewports) with a CTA near the bottom → tests `y` beyond the fold
-- [ ] **[M]** Each page includes the tracker `<script src="/tracker.js" defer>`
-- [ ] **[M]** Browser check of the tracker (moved here from Phase 2; CLAUDE.md §6). Chrome isn't
-  installed on the dev Mac: choose between a manual checklist for the user and Playwright.
-  Check: page_view on load; clicks queued and sent as `text/plain` with 202; a beacon on
-  navigation; nothing sent with `?cf_preview=1`; no console errors on the page; events land in
-  `/api/sessions`
-- [ ] **[S]** Centered `max-width` layout, distinct visual blocks → heatmap overlay is recognizable
-- [ ] **[S]** Small "View dashboard →" link in the footer for reviewers
-- [ ] **[S]** Responsive CSS so mobile vs desktop heatmaps actually differ
+Pages and the tracker browser check are done (see `STATUS_LOG.md`). The seed script below is what remains.
 
 ### 5.1 Seed script (`server/scripts/seed.js`) **[S]** — after the demo pages
 *Moved here from Phase 1: the clicks must cluster around the real button
 positions of these pages, and running it needs a local MongoDB.*
 - [ ] Generate ~40 sessions over the last 7 days across the 3 demo pages and 3 device sizes
 - [ ] Clicks clustered around real button positions (+ jitter) so the heatmap looks meaningful
+  (measure them with `scratch/browser-check.mjs`; at 1440 px the product buttons sit at y ≈ 549 and ≈ 927, the about-page CTA at y ≈ 2455 of 2707)
 - [ ] `--reset` flag to wipe the collection first (local DB only, CLAUDE.md §10)
 - [ ] `"seed"` script in `server/package.json` (the root `seed` script already forwards to it)
 - [ ] Insert through `validateEvent` so seeded events have exactly the shape of real ones
@@ -268,7 +257,7 @@ Server tests were written with Phase 1 (see `STATUS_LOG.md`). New server code ad
   - env: `MONGODB_URI`, `DASHBOARD_ORIGIN=https://<app>.vercel.app`, `NODE_ENV=production`
   - note: free tier sleeps → first request ~30–50s (mention in README)
 - [ ] **[S] Vercel**: import repo, root dir `dashboard`, env `NEXT_PUBLIC_API_URL=https://<server>.onrender.com`
-- [ ] **[S]** Update tracker `src`/`data-endpoint` in demo pages if not using the script-origin default
+- [ ] **[S]** Set `PRODUCTION_DASHBOARD_URL` in `server/public/demo/demo.js` (until then the footer dashboard link is hidden off localhost). The tracker needs no change: demo pages load the same-origin `/tracker.js`
 - [ ] **[S]** Run `npm run seed` against Atlas once so reviewers see data immediately
 - [ ] **[S]** Production smoke test: demo → dashboard → heatmap iframe loads (frameguard/CSP OK) → CORS OK
 

@@ -2,6 +2,37 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-12 — Phase 3: demo pages + tracker browser check
+- `964f3f7` the root `test` script forwards arguments (`npm test --
+  --project tracker`). TODO: README trade-off for the tracker's iframe guard.
+- `481b218` `server/public/demo/`: Acme Roasters (fictional).
+  - **Pages:** `index.html` (hero, Shop now / Learn more), `products.html`
+    (8 cards, `#add-*` buttons), `about.html` (2707 px tall at 1440 px;
+    newsletter form mid-page, Visit the shop CTA at the bottom).
+  - **`demo.css`:** breakpoints at 768 / 1024 px, the same as the device
+    buckets.
+  - **`demo.js`:** cart badge, button feedback, newsletter thanks, and the
+    dashboard link.
+  - **`test/demo.test.js`:** pages are served with the tracker, `/demo`
+    redirects, and no inline scripts, handlers or remote images (CSP).
+    123 tests in total.
+- Created `server/.env` from `.env.example` (local values, git-ignored).
+- Browser check in **headless Brave 152** over the DevTools Protocol
+  (`scratch/browser-check.mjs`, throwaway profile, API on the dev database):
+  - **Journeys:** both arrived complete and in order. Desktop: 12 events
+    across home → products (3 adds) → about (newsletter) → bottom CTA →
+    products. Mobile at 390 px: its own session, device `mobile`.
+  - **Coordinates:** stored click positions match the elements' real
+    page coordinates within 1 px. The about-page CTA is at y = 2455.
+  - **Privacy:** a typed email never appeared in any payload.
+  - **Preview mode:** `?cf_preview=1` sent nothing.
+  - **Console and blocking:** no console errors or warnings, no failed or
+    blocked loads (Brave Shields didn't interfere on localhost).
+  - **Network:** a timer-sent beacon shows as `POST` / `Ping` /
+    `text/plain` / **202**. Beacons sent during navigation don't appear in
+    the page-level CDP log; their stored events are the evidence.
+  - No fixes were needed.
+
 ## 2026-10-12 — Phase 2: tracker
 - `154f048` `server/public/tracker.js` (served at `/tracker.js`): zero
   dependencies, ES5 syntax.

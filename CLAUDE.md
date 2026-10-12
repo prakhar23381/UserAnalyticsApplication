@@ -77,6 +77,8 @@ Toolchain facts that are easy to get wrong:
 - When an npm-workspace script takes arguments, they follow the workspace command: `npm -w server run seed -- --reset`.
 - `npm install` downloads a `mongod` binary (~150 MB) for mongodb-memory-server into `<root>/node_modules/.cache/mongodb-memory-server`. Run anything that uses mongodb-memory-server through an npm script. A plain `node` run from `server/` downloads a second copy to `~/.cache/mongodb-binaries`, outside the repo, unless `MONGOMS_DOWNLOAD_DIR` points at the repo cache.
 - Server tests need no running MongoDB: one in-memory `mongod` per run, one database per test file.
+- Browser checks (§6): there is no Chrome on this Mac; Brave (Chromium) is at `/Applications/Brave Browser.app`. `scratch/browser-check.mjs` drives it headless over the DevTools Protocol (`--headless --remote-debugging-port=9333 --user-data-dir=<scratch profile>`). Stop it with `pkill -f "user-data-dir=<that profile>"` so the user's own Brave is never touched. Beacons sent while a page unloads don't appear in the page's CDP Network log; their stored events are the evidence.
+- Demo pages get the server's CSP (`script-src 'self'`, `script-src-attr 'none'`, `img-src 'self' data:`): no inline `<script>`, no `on*=` attributes, no images from other hosts. `test/demo.test.js` enforces it.
 - Tracker tests run `public/tracker.js` in happy-dom, loaded through a real `<script src>` (a virtual server maps `http://localhost:4000/` to `public/`). happy-dom has no layout: `pageX`, `scrollWidth` and `getBoundingClientRect()` are 0 unless a test sets them.
 
 **Commits and pushes.**
@@ -111,8 +113,12 @@ Toolchain facts that are easy to get wrong:
 │   │   ├── lib/                  normalizeUrl.js, device.js, validateEvent.js
 │   │   ├── middleware/           cors.js (ingestCors, readCors), errorHandler.js
 │   │   └── routes/               events.js, sessions.js, pages.js, heatmap.js
-│   ├── public/tracker.js         the tracking script, served as-is at /tracker.js
+│   ├── .env                      local only, git-ignored (created from .env.example)
+│   ├── public/
+│   │   ├── tracker.js            the tracking script, served as-is at /tracker.js
+│   │   └── demo/                 index.html, products.html, about.html, demo.css, demo.js (served at /demo/)
 │   └── test/                     globalSetup.js, setup.js, factories.js, *.test.js (tracker.test.js: happy-dom)
+├── scratch/                      git-ignored; browser-check.mjs (headless Brave over CDP)
 └── .gitignore
 ```
 
@@ -120,7 +126,7 @@ Planned, not yet created (full layout in `TODO.md` §1):
 
 ```text
 ├── README.md
-├── server/          public/demo/, scripts/seed.js
+├── server/          scripts/seed.js
 └── dashboard/       Next.js dashboard; src/app, src/components, src/lib, .env.local.example
 ```
 

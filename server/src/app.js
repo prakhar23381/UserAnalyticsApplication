@@ -1,7 +1,9 @@
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import helmet from 'helmet';
+import { ingestCors } from './middleware/cors.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+import eventsRouter from './routes/events.js';
 
 // tracker.js and the demo pages. Resolved from this file, not the working directory.
 const publicDir = fileURLToPath(new URL('../public', import.meta.url));
@@ -31,6 +33,8 @@ export function createApp({ dashboardOrigins, isProduction = false }) {
     res.json({ ok: true });
   });
   app.use(express.static(publicDir));
+
+  app.use('/api/events', ingestCors, eventsRouter);
 
   app.use(notFound);
   app.use(errorHandler({ isProduction }));

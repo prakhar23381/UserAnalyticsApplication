@@ -42,9 +42,10 @@ CausalFunnel/
 ├── .gitignore                   # ✅ exists
 ├── docs/
 │   └── assignment.md            # the spec ✅ exists
-├── server/
-│   ├── package.json
+├── server/                      # src/ + test/ ✅ exist (Phase 1)
+│   ├── package.json             # ✅ exists
 │   ├── .env.example             # ✅ exists
+│   ├── vitest.config.js         # ✅ exists
 │   ├── src/
 │   │   ├── index.js             # boot: connect DB → ensure indexes → listen
 │   │   ├── app.js               # builds & exports the express app (used by tests)
@@ -74,11 +75,10 @@ CausalFunnel/
 │   ├── scripts/
 │   │   └── seed.js              # fake sessions so the hosted dashboard isn't empty
 │   └── test/
-│       ├── setup.js             # mongodb-memory-server lifecycle
-│       ├── normalizeUrl.test.js
-│       ├── events.test.js
-│       ├── sessions.test.js
-│       └── heatmap.test.js
+│       ├── globalSetup.js       # one in-memory mongod per run
+│       ├── setup.js             # a database per test file
+│       ├── factories.js         # stored-event builders
+│       └── {app,normalizeUrl,validateEvent,events,sessions,pages,heatmap}.test.js
 └── dashboard/
     ├── package.json
     ├── .env.local.example
@@ -112,146 +112,9 @@ CausalFunnel/
 
 ## 3. Phase 1 — Server (Express + MongoDB)
 
-### 3.1 Bootstrap
-- [ ] **[M]** `npm init` in `server/`, `"type": "module"`; deps: `express mongoose cors dotenv`; dev: `nodemon vitest supertest mongodb-memory-server`
-- [ ] **[M]** `config.js` — load dotenv, fail fast if `MONGODB_URI` missing
-- [ ] **[M]** `db.js` — `connect(uri)` / `disconnect()`
-- [ ] **[M]** `app.js` — exports `createApp()`:
-  - `express.json({ limit: '64kb' })`
-  - `express.static('public')` → serves `/tracker.js` and `/demo/*`
-  - mount routers under `/api`
-  - `GET /health` → `{ ok: true }` (Render health check)
-  - 404 + `errorHandler` last
-- [ ] **[M]** `index.js` — connect → `Event.syncIndexes()` → `app.listen(PORT)`
-- [ ] **[S]** If using `helmet`: **disable `frameguard`** (or set CSP `frame-ancestors` to `DASHBOARD_ORIGIN`) — otherwise the dashboard can't iframe demo pages for the heatmap.
+Done except the stretch item below (see `STATUS_LOG.md`).
 
-### 3.2 CORS (`middleware/cors.js`)
-- [ ] **[M]** `POST /api/events` → `origin: '*'`, no credentials (tracker runs on any site)
-- [ ] **[S]** `GET /api/*` read endpoints → `origin: DASHBOARD_ORIGIN` only
-
-### 3.3 Event model (`models/Event.js`)
-- [ ] **[M]** Schema:
-  ```js
-  const EventSchema = new Schema({
-    session_id:  { type: String, required: true, maxlength: 64 },
-    type:        { type: String, enum: ['page_view', 'click'], required: true },
-    page_url:    { type: String, required: true },   // normalized — heatmap groups by this
-    raw_url:     { type: String, required: true },   // exactly what the browser had
-    timestamp:   { type: Date, required: true },     // client clock
-    received_at: { type: Date, default: Date.now },  // server clock
-    // click only
-    x: Number,
-    y: Number,
-    target: { tag: String, id: String, classes: String, text: String },
-    // context (both types)
-    viewport_w: Number, viewport_h: Number,
-    doc_w: Number,      doc_h: Number,
-    device: { type: String, enum: ['mobile', 'tablet', 'desktop'] },
-    referrer: String,
-    user_agent: String,                              // from request header, not client body
-  }, { versionKey: false });
-  ```
-- [ ] **[M]** Indexes:
-  - `{ session_id: 1, timestamp: 1 }` → session journey + sessions aggregation
-  - `{ page_url: 1, type: 1, device: 1 }` → heatmap + pages list
-  - **[S]** `{ timestamp: -1 }` → recent-first queries
-
-### 3.4 Helpers (`lib/`)
-- [ ] **[M]** `normalizeUrl.js`
-  ```js
-  export function normalizeUrl(raw) {
-    const u = new URL(raw);
-    const path = u.pathname.replace(/\/index\.html?$/i, '/').replace(/\/+$/, '');
-    return `${u.protocol}//${u.host}${path || '/'}`;
-  }
-  ```
-  Cases to cover: `?utm_*`, `#hash`, trailing `/`, `/index.html`, root `/`.
-- [ ] **[M]** `device.js` — `<768` mobile · `768–1023` tablet · `≥1024` desktop
-- [ ] **[M]** `validateEvent.js` — returns `{ ok, value | error }`:
-  - `type` in enum
-  - `session_id` non-empty string ≤ 64
-  - `page_url` parses as `http(s)` URL
-  - `timestamp` parses; reject if > 24h in the future
-  - `click` → `x`, `y` finite numbers ≥ 0
-  - strip unknown fields; truncate `target.text` to 80 chars
-
-### 3.5 Routes
-
-#### `POST /api/events` — receive & store **[M]**
-- [ ] Accept `application/json` **and** `text/plain` (sendBeacon). If `req.body` is a string → `JSON.parse` in try/catch → 400 on failure.
-  - add `express.text({ type: 'text/plain', limit: '64kb' })` on this route
-- [ ] Accept `{ events: [...] }` (tracker) or a single event object (curl convenience)
-- [ ] Max 50 events per request → 413 if over
-- [ ] Validate each; enrich: `page_url = normalizeUrl(raw)`, `raw_url`, `device`, `user_agent`, `received_at`
-- [ ] `Event.insertMany(valid, { ordered: false })`
-- [ ] Respond `202 { accepted: n, rejected: m }`; `400` only if body unparseable or zero valid
-- Example:
-  ```bash
-  curl -X POST localhost:4000/api/events -H 'Content-Type: application/json' -d '{
-    "session_id":"s_123","type":"click","page_url":"http://localhost:4000/demo/products.html?utm=x",
-    "timestamp":"2026-10-12T10:00:00Z","x":420,"y":880,"viewport_w":1440,"viewport_h":900,"doc_w":1440,"doc_h":2400
-  }'
-  ```
-
-#### `GET /api/sessions?page=1&limit=20` — sessions with counts **[M]**
-- [ ] Aggregation:
-  ```js
-  [
-    { $sort: { session_id: 1, timestamp: 1 } },          // uses compound index
-    { $group: {
-        _id: '$session_id',
-        event_count: { $sum: 1 },
-        page_views:  { $sum: { $cond: [{ $eq: ['$type', 'page_view'] }, 1, 0] } },
-        clicks:      { $sum: { $cond: [{ $eq: ['$type', 'click'] }, 1, 0] } },
-        first_seen:  { $first: '$timestamp' },
-        last_seen:   { $last:  '$timestamp' },
-        entry_page:  { $first: '$page_url' },
-        pages:       { $addToSet: '$page_url' },
-        device:      { $first: '$device' },
-    } },
-    { $sort: { last_seen: -1 } },
-    { $facet: {
-        data:  [{ $skip: (page - 1) * limit }, { $limit: limit }],
-        total: [{ $count: 'count' }],
-    } },
-  ]
-  ```
-- [ ] Map to response (add `duration_ms`, `pages_visited = pages.length`):
-  ```json
-  { "data": [{ "session_id": "s_123", "event_count": 12, "page_views": 4, "clicks": 8,
-               "first_seen": "...", "last_seen": "...", "duration_ms": 183000,
-               "entry_page": "http://.../demo", "pages_visited": 3, "device": "desktop" }],
-    "page": 1, "limit": 20, "total": 57 }
-  ```
-- [ ] Clamp `limit` to 1–100; default 20
-
-#### `GET /api/sessions/:id/events` — the user journey **[M]**
-- [ ] `find({ session_id }).sort({ timestamp: 1, _id: 1 })` (tie-break on `_id` for same-ms events)
-- [ ] `404` if no events
-- [ ] Response: `{ session_id, events: [...] }`
-
-#### `GET /api/pages` — page list for the heatmap dropdown **[M — implied by spec]**
-- [ ] Aggregate group by `page_url` → `{ page_url, page_views, clicks, last_seen }`, sort by `clicks` desc
-
-#### `GET /api/heatmap?page=<page_url>&device=all|mobile|tablet|desktop` — click data **[M]**
-- [ ] `400` if `page` missing; normalize the `page` param with `normalizeUrl` too
-- [ ] `find({ page_url, type: 'click', ...(device !== 'all' && { device }) })`
-- [ ] Projection: `x y doc_w doc_h viewport_w device` only; sort newest first; cap at 5000
-- [ ] Response:
-  ```json
-  { "page_url": "...", "device": "desktop", "total_clicks": 312,
-    "clicks": [{ "x": 420, "y": 880, "doc_w": 1440, "doc_h": 2400, "device": "desktop" }] }
-  ```
-
-### 3.6 Errors & hardening
-- [ ] **[M]** `errorHandler` → JSON `{ error: message }`, 500 hides internals in production
-- [ ] **[S]** Validate `:id` / query params, never pass raw objects into Mongo queries (`$` injection)
 - [ ] **[X]** `express-rate-limit` on `POST /api/events` (e.g. 120 req/min/IP)
-
-### 3.7 Seed script (`scripts/seed.js`) **[S]**
-- [ ] Generate ~40 sessions over the last 7 days across the 3 demo pages and 3 device sizes
-- [ ] Clicks clustered around real button positions (+ jitter) so the heatmap looks meaningful
-- [ ] `--reset` flag to wipe the collection first
 
 ---
 
@@ -267,7 +130,8 @@ CausalFunnel/
   - localStorage key `cf_session` → `{ id, last_activity }`
   - new id if missing or `now - last_activity > 30 min`
   - update `last_activity` on every event
-  - id: `crypto.randomUUID()` with `Math.random` fallback (randomUUID needs a secure context)
+  - id: `crypto.randomUUID()` with `Math.random` fallback (randomUUID needs a secure context).
+    The server rejects ids that don't match `^[A-Za-z0-9_-]{1,64}$`, so the fallback must stay within that alphabet
   - wrap storage in try/catch → in-memory fallback (Safari private mode / blocked storage)
 - [ ] **[M]** `page_view` on load
 - [ ] **[M]** `click` via `document.addEventListener('click', fn, true)` — **capture phase** so page code calling `stopPropagation` can't hide clicks. Capture:
@@ -308,6 +172,15 @@ CausalFunnel/
 - [ ] **[S]** Small "View dashboard →" link in the footer for reviewers
 - [ ] **[S]** Responsive CSS so mobile vs desktop heatmaps actually differ
 
+### 5.1 Seed script (`server/scripts/seed.js`) **[S]** — after the demo pages
+*Moved here from Phase 1: the clicks must cluster around the real button
+positions of these pages, and running it needs a local MongoDB.*
+- [ ] Generate ~40 sessions over the last 7 days across the 3 demo pages and 3 device sizes
+- [ ] Clicks clustered around real button positions (+ jitter) so the heatmap looks meaningful
+- [ ] `--reset` flag to wipe the collection first (local DB only, CLAUDE.md §10)
+- [ ] `"seed"` script in `server/package.json` (the root `seed` script already forwards to it)
+- [ ] Insert through `validateEvent` so seeded events have exactly the shape of real ones
+
 ---
 
 ## 6. Phase 4 — Dashboard (Next.js)
@@ -321,7 +194,7 @@ CausalFunnel/
 - [ ] **[M]** `npm i swr -w dashboard` (from root)
 - [ ] **[M]** Add `"typecheck": "tsc --noEmit"` to `dashboard/package.json` scripts (CLAUDE.md §2 depends on it)
 - [ ] **[M]** `lib/api.ts`: `API_URL = process.env.NEXT_PUBLIC_API_URL`; `fetcher`; helpers `sessionsUrl(page)`, `sessionEventsUrl(id)`, `pagesUrl()`, `heatmapUrl(page, device)`
-- [ ] **[M]** `lib/types.ts`:
+- [ ] **[M]** `lib/types.ts` — matches the server responses as built in Phase 1:
   ```ts
   export type EventType = 'page_view' | 'click';
   export type Device = 'mobile' | 'tablet' | 'desktop';
@@ -330,7 +203,9 @@ CausalFunnel/
     page_url: string; raw_url: string; timestamp: string; received_at: string;
     x?: number; y?: number; target?: { tag?: string; id?: string; classes?: string; text?: string };
     viewport_w: number; viewport_h: number; doc_w: number; doc_h: number; device: Device;
+    referrer?: string; user_agent?: string;
   }
+  export interface SessionEvents { session_id: string; events: TrackedEvent[] }
   export interface SessionSummary {
     session_id: string; event_count: number; page_views: number; clicks: number;
     first_seen: string; last_seen: string; duration_ms: number;
@@ -338,10 +213,14 @@ CausalFunnel/
   }
   export interface Paginated<T> { data: T[]; page: number; limit: number; total: number }
   export interface PageSummary { page_url: string; page_views: number; clicks: number; last_seen: string }
+  export interface PagesResponse { data: PageSummary[] }
+  export interface HeatmapClick { x: number; y: number; doc_w: number; doc_h: number; viewport_w: number; device: Device }
   export interface HeatmapResponse {
-    page_url: string; device: Device | 'all'; total_clicks: number;
-    clicks: Pick<TrackedEvent, 'x' | 'y' | 'doc_w' | 'doc_h' | 'device'>[];
+    page_url: string; device: Device | 'all';
+    total_clicks: number;   // uncapped; clicks.length ≤ 5000
+    clicks: HeatmapClick[];
   }
+  export interface ApiError { error: string }
   ```
 - [ ] **[M]** `layout.tsx` with `Nav` (Sessions · Heatmap · "Open demo site ↗")
 - [ ] **[M]** `app/page.tsx` → `redirect('/sessions')`
@@ -389,19 +268,8 @@ CausalFunnel/
 
 ## 7. Phase 5 — Tests (server)
 
-- [ ] **[S]** `test/setup.js`: start `MongoMemoryServer` → connect → clear collection `beforeEach` → stop `afterAll`
-- [ ] **[S]** `normalizeUrl.test.js`: utm params, hash, trailing slash, `/index.html`, root, uppercase host
-- [ ] **[S]** `events.test.js`
-  - single valid event → 202, stored with normalized `page_url`, `device`, `received_at`
-  - `text/plain` body is parsed
-  - batch with 2 valid + 1 invalid → `{ accepted: 2, rejected: 1 }`
-  - click without `x/y` → rejected
-  - unparseable body → 400; > 50 events → 413
-- [ ] **[S]** `sessions.test.js`
-  - counts (event/page_view/click) correct; sorted by `last_seen` desc; pagination `total`
-  - `/sessions/:id/events` ordered by timestamp; unknown id → 404
-- [ ] **[S]** `heatmap.test.js`
-  - only clicks returned, only for that page; `device` filter works; missing `page` → 400
+Server tests were written with Phase 1 (see `STATUS_LOG.md`). New server code adds its tests in the same change.
+
 - [ ] **[X]** Dashboard: one Playwright smoke test (sessions list renders, heatmap shows dots)
 
 ---
@@ -447,7 +315,7 @@ CausalFunnel/
 - [ ] **[M]** Tech stack (table from §0)
 - [ ] **[M]** Setup steps: prerequisites (Node 22+, Docker) → `docker compose up -d` → copy env files → `npm install` → `npm run dev` → `npm run seed` → URLs
 - [ ] **[S]** Embedding the tracker (snippet + what's collected)
-- [ ] **[S]** API reference (5 endpoints, params, sample responses)
+- [ ] **[S]** API reference (5 endpoints, params, sample responses). Include: `POST /api/events` also returns `errors: [{ index, error }]` (first 10) when events are rejected; `GET /api/pages` is wrapped as `{ data: [...] }`; repeated query params → 400; error bodies are `{ error }`
 - [ ] **[S]** Data model + indexes and why
 - [ ] **[M]** Assumptions & trade-offs:
   - Session = 30-min inactivity window, shared across tabs, client-generated & trusted

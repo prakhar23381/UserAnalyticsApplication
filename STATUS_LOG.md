@@ -2,6 +2,42 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-12 — Phase 1: server (Express + MongoDB)
+- `server` workspace via `npm init -w server` from the root: ESM, `engines`
+  `>=22.12` (root too, for `vitest@5`). Deps: express 5.3, mongoose 9.11,
+  helmet 8.3, cors, dotenv 18; dev: vitest 5, supertest 7,
+  mongodb-memory-server 11. `dev` script uses `node --watch`, not nodemon.
+- `9f4d0fc` scaffold: `config.js` (fails fast without `MONGODB_URI`;
+  `DASHBOARD_ORIGIN` as a comma-separated list), `db.js`, `createApp()` in
+  `app.js` (helmet with overrides for the heatmap iframe, cross-origin
+  `/tracker.js` and localhost; 64kb JSON; `/health`; static `public/`; JSON
+  404 and error handler that hides 500 details in production), `index.js`
+  (connect → `Event.createIndexes()` → listen; SIGTERM shutdown), the Event
+  model with its 3 indexes, and `normalizeUrl` / `deviceFor` / `validateEvent`.
+- `4960705` `POST /api/events`: JSON or text/plain, batch or single event,
+  ≤ 50 per request (413), each validated separately, `202 { accepted,
+  rejected, errors? }`, 400 when nothing is valid. Open CORS.
+- `c7eb908` reads: `GET /api/sessions` (aggregated on read, paginated,
+  most recent first), `GET /api/sessions/:id/events` (journey sorted by
+  `{ timestamp, _id }`), `GET /api/pages` (for the heatmap picker),
+  `GET /api/heatmap` (normalized `page` param, device filter, newest 5000
+  clicks + uncapped `total_clicks`). Dashboard-only CORS. Repeated query
+  params rejected.
+- Tests (pulled forward from Phase 5): 85 passing across 7 files: one
+  in-memory mongod per run, one database per test file.
+- Verified: every query shape uses an index (`explain()`); the server boots
+  against an in-memory mongod, answers `/health`, exits 0 on SIGTERM, and
+  fails fast without `MONGODB_URI`. Not verified: a real MongoDB (Docker not
+  installed).
+- Moved the seed script (TODO §3.7) to after Phase 3. Aligned the Phase 4
+  `types.ts` plan with the actual responses (`viewport_w` in heatmap clicks,
+  `{ data }` around pages).
+- Incident: an ad-hoc smoke test ran mongodb-memory-server with plain `node`
+  from `server/`, which downloaded a second 148 MB `mongod` to
+  `~/.cache/mongodb-binaries` (outside the repo). Left in place pending the
+  user's decision; the cause is recorded in `CLAUDE.md` §2 and the recovery
+  context.
+
 ## 2026-10-12 — Phase 0: setup
 - `git init -b main`. Moved the spec to `docs/assignment.md` (sha256
   unchanged) and pointed `CLAUDE.md` / `TODO.md` at the new path.

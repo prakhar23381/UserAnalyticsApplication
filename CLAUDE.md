@@ -26,7 +26,7 @@ the `causalfunnel-engineer` subagent reads it through the symlink
   - **Tracker:** vanilla JS IIFE, **zero dependencies — keep it that way.**
     Served as-is from `server/public/tracker.js`, no build step.
   - **Frontend:** Next.js (App Router), TypeScript, Tailwind, SWR (5s polling).
-  - **Backend:** Node 22+, Express, ESM JavaScript, Mongoose. Stateless.
+  - **Backend:** Node 22.12+, Express, ESM JavaScript, Mongoose. Stateless.
     MongoDB for persistence (Docker locally, Atlas M0 in production).
   - **Tests:** Vitest + supertest + mongodb-memory-server (server only).
   - **Hosting:** Render (API + tracker + demo pages), Vercel (dashboard), Atlas (DB).
@@ -49,7 +49,7 @@ the `causalfunnel-engineer` subagent reads it through the symlink
 | **Server tests** | `<root>/server/test` |
 | **Frontend source** | `<root>/dashboard/src` |
 | **Build output** | `<root>/dashboard/.next` (never hand-edit) |
-| **Toolchain** | Node 22+, npm workspaces (`server`, `dashboard`); deps hoisted to `<root>/node_modules` |
+| **Toolchain** | Node 22.12+ (Vitest 5 needs it), npm workspaces (`server`, `dashboard`); deps hoisted to `<root>/node_modules` |
 | **Node tooling** | `<root>/node_modules/.bin` |
 | **Agent rules** | `<root>/CLAUDE.md` — **the only rules file**, versioned with the code |
 | **Claude Code config** | `<root>/.claude/` — settings and permissions. `.claude/agents/causalfunnel-engineer.md` is a **symlink to this file** and holds no rules of its own |
@@ -62,7 +62,7 @@ npm -w dashboard run build            # production build -> dashboard/.next/
 npm -w dashboard run typecheck        # tsc --noEmit
 npm -w dashboard run lint             # eslint
 npm test                              # server tests
-npm -w server run dev                 # API only (nodemon); also serves /tracker.js and /demo/
+npm -w server run dev                 # API only (node --watch); also serves /tracker.js and /demo/
 npm -w server run seed -- --reset     # wipe + seed fake sessions — local DB only (§10)
 ```
 
@@ -74,7 +74,8 @@ Toolchain facts that are easy to get wrong:
 - Add dependencies with `npm i <pkg> -w server` or `-w dashboard` from `<root>`, never with `npm install` inside a workspace folder.
 - The server is ESM (`"type": "module"`), so relative imports need the `.js` extension.
 - When an npm-workspace script takes arguments, they follow the workspace command: `npm -w server run seed -- --reset`.
-- The first `npm test` downloads a `mongod` binary (~100 MB) for mongodb-memory-server. That step is slow and needs network access. It's not a hang.
+- `npm install` downloads a `mongod` binary (~150 MB) for mongodb-memory-server into `<root>/node_modules/.cache/mongodb-memory-server`. Run anything that uses mongodb-memory-server through an npm script. A plain `node` run from `server/` downloads a second copy to `~/.cache/mongodb-binaries`, outside the repo, unless `MONGOMS_DOWNLOAD_DIR` points at the repo cache.
+- Server tests need no running MongoDB: one in-memory `mongod` per run, one database per test file.
 
 **Commits and pushes.**
 - **During the day:** commit locally after each major implementation, with a
@@ -98,8 +99,17 @@ Toolchain facts that are easy to get wrong:
 ├── docs/assignment.md            the spec (read-only)
 ├── package.json  package-lock.json   npm workspaces (server, dashboard); root devDep: concurrently
 ├── docker-compose.yml            local MongoDB (mongo:7, volume mongo-data)
-├── server/
-│   └── .env.example              PORT, MONGODB_URI, DASHBOARD_ORIGIN
+├── server/                       Express API (ESM, Node >=22.12)
+│   ├── package.json  vitest.config.js  .env.example
+│   ├── src/
+│   │   ├── index.js              boot: connect → Event.createIndexes() → listen; SIGTERM shutdown
+│   │   ├── app.js                createApp({ dashboardOrigins, isProduction }); helmet, static, routers
+│   │   ├── config.js  db.js      env (fails fast without MONGODB_URI); mongoose connect/disconnect
+│   │   ├── models/Event.js       schema + the 3 indexes (autoIndex off)
+│   │   ├── lib/                  normalizeUrl.js, device.js, validateEvent.js
+│   │   ├── middleware/           cors.js (ingestCors, readCors), errorHandler.js
+│   │   └── routes/               events.js, sessions.js, pages.js, heatmap.js
+│   └── test/                     globalSetup.js, setup.js, factories.js, *.test.js
 └── .gitignore
 ```
 
@@ -107,7 +117,7 @@ Planned, not yet created (full layout in `TODO.md` §1):
 
 ```text
 ├── README.md
-├── server/          Express API; package.json, src/, public/ (tracker.js, demo/), scripts/, test/
+├── server/          public/ (tracker.js, demo/), scripts/seed.js
 └── dashboard/       Next.js dashboard; src/app, src/components, src/lib, .env.local.example
 ```
 
@@ -129,10 +139,12 @@ trade-offs in the README instead.
 - **Diagnostics and scratch files:** `<root>/artifacts/` or `<root>/scratch/` (both git-ignored).
 - **Writable:** `server/{src,public,scripts,test}/`, `dashboard/src/`,
   `dashboard/public/`, `docs/`, root config (`package.json`,
-  `docker-compose.yml`, `.gitignore`, `README.md`), and the three bookkeeping files.
+  `docker-compose.yml`, `.gitignore`, `README.md`), workspace config
+  (`server/package.json`, `server/vitest.config.js`, `dashboard/` config
+  files), and the three bookkeeping files.
 - **Read-only:** `node_modules/`, `dashboard/.next/`, `.git/`, and the
   assignment spec. Never edit the requirements.
-- **Environment:** the server reads `server/.env` (`PORT`, `MONGODB_URI`,
+- **Environment:** the server reads `server/.env` (`PORT`, `MONGODB_URI`, `NODE_ENV`,
   `DASHBOARD_ORIGIN`). The dashboard reads `dashboard/.env.local`
   (`NEXT_PUBLIC_API_URL`). Only `NEXT_PUBLIC_`-prefixed vars reach the browser,
   and they are inlined at build time. Only the `*.example` files are committed.
@@ -151,11 +163,16 @@ trade-offs in the README instead.
   by `{ timestamp: 1, _id: 1 }`.
 - **Sessions** are owned by the tracker: localStorage key `cf_session`, 30-min
   inactivity timeout, with an in-memory fallback when storage is blocked.
+  `session_id` must match `^[A-Za-z0-9_-]{1,64}$` (`SESSION_ID_RE` in
+  `validateEvent.js`); the server rejects anything else.
 - **Tracker:** zero dependencies; never throws into the host page; batches
   ≤ 50 events as `{ events: [...] }`; listens in the capture phase; does
   nothing when `?cf_preview=1` is set or it's running inside an iframe.
 - **CORS:** `POST /api/events` is open (`*`, no credentials). Read endpoints
-  allow only `DASHBOARD_ORIGIN`.
+  allow only `DASHBOARD_ORIGIN` (a comma-separated list). The same origins are
+  the CSP `frame-ancestors`, which lets the dashboard iframe the demo pages.
+- **Query params** reaching Mongo are checked to be plain strings first
+  (Express 5 turns a repeated param into an array).
 - **Indexes:** every query on `events` must hit an index
   (`{session_id, timestamp}`, `{page_url, type, device}`, `{timestamp}`). If a
   new query doesn't, add an index or ask.

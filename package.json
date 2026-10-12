@@ -1,0 +1,19 @@
+{
+  "name": "causalfunnel",
+  "private": true,
+  "workspaces": [
+    "server",
+    "dashboard"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,dashboard -c blue,magenta \"npm -w server run dev\" \"npm -w dashboard run dev\"",
+    "test": "npm -w server test",
+    "seed": "npm -w server run seed --"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}

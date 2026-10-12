@@ -16,7 +16,7 @@ the `causalfunnel-engineer` subagent reads it through the symlink
 ## 1) Project Overview
 - **Project Name:** `CausalFunnel`
 - **Project Root:** `/Users/PrakharSaxena/Documents/Code/CausalFunnel`
-- **Target Branch:** `main` · **Remote:** not created yet (public GitHub repo, TODO Phase 0)
+- **Target Branch:** `main` · **Remote:** `origin` = `https://github.com/prakhar23381/UserAnalyticsApplication` (public)
 - **Purpose:** Take-home assignment for CausalFunnel's Full Stack Engineer role.
   An embeddable script tracks `page_view` and `click` events on a webpage, an
   API stores them in MongoDB, and a dashboard shows sessions (user journeys)
@@ -26,7 +26,7 @@ the `causalfunnel-engineer` subagent reads it through the symlink
   - **Tracker:** vanilla JS IIFE, **zero dependencies — keep it that way.**
     Served as-is from `server/public/tracker.js`, no build step.
   - **Frontend:** Next.js (App Router), TypeScript, Tailwind, SWR (5s polling).
-  - **Backend:** Node 20+, Express, ESM JavaScript, Mongoose. Stateless.
+  - **Backend:** Node 22+, Express, ESM JavaScript, Mongoose. Stateless.
     MongoDB for persistence (Docker locally, Atlas M0 in production).
   - **Tests:** Vitest + supertest + mongodb-memory-server (server only).
   - **Hosting:** Render (API + tracker + demo pages), Vercel (dashboard), Atlas (DB).
@@ -49,7 +49,7 @@ the `causalfunnel-engineer` subagent reads it through the symlink
 | **Server tests** | `<root>/server/test` |
 | **Frontend source** | `<root>/dashboard/src` |
 | **Build output** | `<root>/dashboard/.next` (never hand-edit) |
-| **Toolchain** | Node 20+, npm workspaces (`server`, `dashboard`); deps hoisted to `<root>/node_modules` |
+| **Toolchain** | Node 22+, npm workspaces (`server`, `dashboard`); deps hoisted to `<root>/node_modules` |
 | **Node tooling** | `<root>/node_modules/.bin` |
 | **Agent rules** | `<root>/CLAUDE.md` — **the only rules file**, versioned with the code |
 | **Claude Code config** | `<root>/.claude/` — settings and permissions. `.claude/agents/causalfunnel-engineer.md` is a **symlink to this file** and holds no rules of its own |
@@ -96,15 +96,19 @@ Toolchain facts that are easy to get wrong:
 │   └── causalfunnel-engineer.md  symlink → ../../CLAUDE.md
 ├── TODO.md  STATUS_LOG.md  .agent_recovery_context.md
 ├── docs/assignment.md            the spec (read-only)
+├── package.json  package-lock.json   npm workspaces (server, dashboard); root devDep: concurrently
+├── docker-compose.yml            local MongoDB (mongo:7, volume mongo-data)
+├── server/
+│   └── .env.example              PORT, MONGODB_URI, DASHBOARD_ORIGIN
 └── .gitignore
 ```
 
 Planned, not yet created (full layout in `TODO.md` §1):
 
 ```text
-├── package.json  docker-compose.yml  README.md
-├── server/          Express API; src/, public/ (tracker.js, demo/), scripts/, test/
-└── dashboard/       Next.js dashboard; src/app, src/components, src/lib
+├── README.md
+├── server/          Express API; package.json, src/, public/ (tracker.js, demo/), scripts/, test/
+└── dashboard/       Next.js dashboard; src/app, src/components, src/lib, .env.local.example
 ```
 
 > [!IMPORTANT]

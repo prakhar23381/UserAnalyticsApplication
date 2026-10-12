@@ -13,7 +13,7 @@ Priority tags: **[M]** must (spec requirement) · **[S]** should (quality signal
 
 | Area | Choice | Why |
 |---|---|---|
-| Backend | Node 20+ · Express · ESM JavaScript | Spec heading says Node.js; one language across the stack |
+| Backend | Node 22+ · Express · ESM JavaScript | Spec heading says Node.js; one language across the stack. 22+ because Node 20 is EOL and `concurrently@10` needs 22 |
 | DB | MongoDB · Mongoose | Schema + validation + indexes declared in one place ("structured format") |
 | Dashboard | Next.js (App Router) · TypeScript · Tailwind · SWR | SWR gives polling for "live" updates with almost no code |
 | Tracker | Vanilla JS IIFE, zero deps | Must be droppable into any page |
@@ -37,14 +37,14 @@ CausalFunnel/
 ├── CLAUDE.md                    # agent rules ✅ exists
 ├── .claude/agents/causalfunnel-engineer.md   # symlink → ../../CLAUDE.md ✅ exists
 ├── TODO.md  STATUS_LOG.md  .agent_recovery_context.md   # bookkeeping ✅ exist
-├── package.json                 # npm workspaces: server, dashboard; `npm run dev` runs both
-├── docker-compose.yml           # mongo:7 (+ optional server)
+├── package.json                 # npm workspaces: server, dashboard; `npm run dev` runs both ✅ exists
+├── docker-compose.yml           # mongo:7 ✅ exists
 ├── .gitignore                   # ✅ exists
 ├── docs/
 │   └── assignment.md            # the spec ✅ exists
 ├── server/
 │   ├── package.json
-│   ├── .env.example
+│   ├── .env.example             # ✅ exists
 │   ├── src/
 │   │   ├── index.js             # boot: connect DB → ensure indexes → listen
 │   │   ├── app.js               # builds & exports the express app (used by tests)
@@ -107,36 +107,6 @@ CausalFunnel/
 ```
 
 > Tracker + demo live inside `server/public/` so one Render deploy serves API, tracker and demo — no copy/build step.
-
----
-
-## 2. Phase 0 — Setup
-
-- [ ] **[M]** `git init`, create public GitHub repo, first commit with spec moved to `docs/assignment.md`
-- [ ] **[S]** Root `package.json` with workspaces `["server", "dashboard"]` and scripts:
-  - `dev` → `concurrently "npm -w server run dev" "npm -w dashboard run dev"`
-  - `test` → `npm -w server test`
-  - `seed` → `npm -w server run seed`
-- [ ] **[S]** `docker-compose.yml`:
-  ```yaml
-  services:
-    mongo:
-      image: mongo:7
-      ports: ["27017:27017"]
-      volumes: [mongo-data:/data/db]
-  volumes:
-    mongo-data:
-  ```
-- [ ] **[M]** `server/.env.example`
-  ```
-  PORT=4000
-  MONGODB_URI=mongodb://localhost:27017/causalfunnel
-  DASHBOARD_ORIGIN=http://localhost:3000
-  ```
-- [ ] **[M]** `dashboard/.env.local.example`
-  ```
-  NEXT_PUBLIC_API_URL=http://localhost:4000
-  ```
 
 ---
 
@@ -344,6 +314,10 @@ CausalFunnel/
 
 ### 6.1 Setup
 - [ ] **[M]** `npx create-next-app@latest dashboard --ts --tailwind --app --src-dir --eslint`
+- [ ] **[M]** `dashboard/.env.local.example` — only **after** the scaffold (`create-next-app` refuses a non-empty target folder)
+  ```
+  NEXT_PUBLIC_API_URL=http://localhost:4000
+  ```
 - [ ] **[M]** `npm i swr -w dashboard` (from root)
 - [ ] **[M]** Add `"typecheck": "tsc --noEmit"` to `dashboard/package.json` scripts (CLAUDE.md §2 depends on it)
 - [ ] **[M]** `lib/api.ts`: `API_URL = process.env.NEXT_PUBLIC_API_URL`; `fetcher`; helpers `sessionsUrl(page)`, `sessionEventsUrl(id)`, `pagesUrl()`, `heatmapUrl(page, device)`
@@ -471,7 +445,7 @@ CausalFunnel/
                      Next.js dashboard ──┘ (sessions, journey, pages, heatmap)
   ```
 - [ ] **[M]** Tech stack (table from §0)
-- [ ] **[M]** Setup steps: prerequisites (Node 20+, Docker) → `docker compose up -d` → copy env files → `npm install` → `npm run dev` → `npm run seed` → URLs
+- [ ] **[M]** Setup steps: prerequisites (Node 22+, Docker) → `docker compose up -d` → copy env files → `npm install` → `npm run dev` → `npm run seed` → URLs
 - [ ] **[S]** Embedding the tracker (snippet + what's collected)
 - [ ] **[S]** API reference (5 endpoints, params, sample responses)
 - [ ] **[S]** Data model + indexes and why

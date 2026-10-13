@@ -103,10 +103,13 @@ Toolchain facts that are easy to get wrong:
 ```text
 <root>/
 ├── CLAUDE.md                     agent rules (this file)
+├── README.md                     for hiring reviewers: setup, API reference, trade-offs (live links after Phase 7)
 ├── .claude/agents/
 │   └── causalfunnel-engineer.md  symlink → ../../CLAUDE.md
 ├── TODO.md  STATUS_LOG.md  .agent_recovery_context.md
-├── docs/assignment.md            the spec (read-only)
+├── docs/
+│   ├── assignment.md             the spec (read-only)
+│   └── images/                   README screenshots (sessions, journey, heatmap; scratch/dashboard-check.mjs)
 ├── package.json  package-lock.json   npm workspaces (server, dashboard); root devDep: concurrently
 ├── docker-compose.yml            local MongoDB (mongo:7, volume mongo-data)
 ├── server/                       Express API (ESM, Node >=22.12)
@@ -138,14 +141,9 @@ Toolchain facts that are easy to get wrong:
 │       └── lib/                  api.ts (useApi, URLs), types.ts, format.ts, journey.ts, heatmap.ts,
 │                                 *.test.ts (Vitest)
 ├── scratch/                      git-ignored; browser-check.mjs, measure-layout.mjs, dashboard-check.mjs,
-│                                 iframe-debug.mjs, e2e-check.mjs (Phase 6; headless Brave over CDP), shots/
+│                                 iframe-debug.mjs, e2e-check.mjs (Phase 6; headless Brave over CDP), shots/,
+│                                 readme-check/ (fresh clone from the README check)
 └── .gitignore
-```
-
-Planned, not yet created:
-
-```text
-└── README.md
 ```
 
 > [!IMPORTANT]

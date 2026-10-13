@@ -33,7 +33,7 @@ Key design rules (carry through every phase):
 
 ```
 CausalFunnel/
-├── README.md
+├── README.md                    # ✅ exists (Phase 8)
 ├── CLAUDE.md                    # agent rules ✅ exists
 ├── .claude/agents/causalfunnel-engineer.md   # symlink → ../../CLAUDE.md ✅ exists
 ├── TODO.md  STATUS_LOG.md  .agent_recovery_context.md   # bookkeeping ✅ exist
@@ -41,7 +41,8 @@ CausalFunnel/
 ├── docker-compose.yml           # mongo:7 ✅ exists
 ├── .gitignore                   # ✅ exists
 ├── docs/
-│   └── assignment.md            # the spec ✅ exists
+│   ├── assignment.md            # the spec ✅ exists
+│   └── images/                  # README screenshots ✅ exist
 ├── server/                      # src/ + test/ ✅ exist (Phase 1)
 │   ├── package.json             # ✅ exists
 │   ├── .env.example             # ✅ exists
@@ -154,37 +155,9 @@ Done, including the phone/tablet `y` fix it found (see `STATUS_LOG.md`); rerun w
 
 ## 10. Phase 8 — README
 
-- [ ] **[M]** Title + one-paragraph summary
-- [ ] **[S]** Live links: Demo site · Dashboard · API health
-- [ ] **[S]** Screenshot / GIF: Sessions list, Journey, Heatmap
-- [ ] **[S]** Architecture diagram (ASCII):
-  ```
-  demo page + tracker.js ──beacon──▶ Express API ──▶ MongoDB
-                                         ▲
-                     Next.js dashboard ──┘ (sessions, journey, pages, heatmap)
-  ```
-- [ ] **[M]** Tech stack (table from §0)
-- [ ] **[M]** Setup steps: prerequisites (Node 22+, Docker) → `docker compose up -d` → copy env files → `npm install` → `npm run dev` → `npm run seed` → URLs
-- [ ] **[S]** Embedding the tracker (snippet + what's collected)
-- [ ] **[S]** Seed script: what it generates; `--reset` deletes only `seed_` sessions; `--sessions`, `--base-url`, `--allow-remote`; click positions measured at 1280 / 768 / 375, so they need re-measuring if the demo pages change
-- [ ] **[S]** API reference (5 endpoints, params, sample responses). Include: `POST /api/events` also returns `errors: [{ index, error }]` (first 10) when events are rejected; `GET /api/pages` is wrapped as `{ data: [...] }`; repeated query params → 400; error bodies are `{ error }`
-- [ ] **[S]** Data model + indexes and why
-- [ ] **[M]** Assumptions & trade-offs:
-  - Session = 30-min inactivity window, shared across tabs, client-generated & trusted
-  - URL normalization drops query/hash (UTM variants merge; genuinely different `?id=` pages merge too)
-  - Heatmap places clicks by device bucket, drawn at 1280 / 768 / 375: `y` as recorded; desktop `x` measured from the page centre (exact for centred-column sites at any width), tablet/mobile `x` as a share of the width (fluid layouts). Wrong for full-width or left-aligned desktop layouts; clicks off the canvas are counted, not drawn. Element-relative coords would be the next step
-  - No "All devices" heatmap: mixing layouts would put clicks on the wrong elements (the API still accepts `device=all`)
-  - Heatmap background is the live page in a sandboxed iframe (no scripts, no navigation, `cf_preview=1`, http(s) only). It shows the page as it is now, not as it was when clicked, and as served, before any script changes it (submitting the newsletter replaces the form with a shorter line, so the CTA below moved 12 px for the visitor but not in the preview); ingestion is open, so a stored `page_url` is untrusted
-  - Dashboard fetches from the browser (SWR); its pages are static shells, so a sleeping API shows a "waking up" note instead of a blank page
-  - `npm audit` reports a `braces` advisory via `eslint-config-next` (lint-time only, not shipped); npm's "fix" downgrades to Next 14's config
-  - Sessions list is aggregated on read; at scale → maintain a `sessions` collection on ingest or pre-aggregate
-  - Heatmap capped at 5000 newest clicks
-  - Client timestamps can be skewed; `received_at` kept for that reason
-  - No auth, no multi-site `site_id`, open ingestion endpoint (rate-limit only if implemented)
-  - Atlas IP allowlist open for free-tier hosting
-  - Polling (5s) instead of websockets
-  - The tracker does nothing inside an iframe (that keeps the heatmap preview from recording visits), so a customer page legitimately shown in an iframe isn't tracked either
-- [ ] **[S]** "What I'd do next": site_id + API keys, element-relative heatmaps, scroll-depth events, retention via TTL index, websockets, bot filtering
+Done except the item that needs Phase 7 (see `STATUS_LOG.md`).
+
+- [ ] **[S]** Live links in `README.md`: Demo site · Dashboard · API health. Add them under the summary once Phase 7 is deployed; change "Hosting (target)" in the tech stack table to the real hosts.
 
 ---
 

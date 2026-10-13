@@ -2,6 +2,45 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-14 — Phase 8: README
+- `README.md` for hiring reviewers: summary, screenshots, how it works (ASCII
+  diagram, event flow, how the heatmap places clicks), tech stack, local
+  setup with configuration and test commands, embedding the tracker (fields,
+  privacy, behaviour), the seed script, the API reference (5 endpoints with
+  parameters, status codes and sample responses taken from the local API),
+  the data model and indexes, assumptions and trade-offs (every item from
+  the TODO list, plus the 2026-10-14 heatmap `y` rule), what I'd do next,
+  and the project layout.
+- No live links yet (Phase 7); one TODO item remains for them. The API
+  reference stays in the README, with no `docs/api.md`.
+- **Screenshots** in `docs/images/` (sessions, journey of
+  `seed_ssiege41n1vj`, desktop Products heatmap): 2560 px wide, light mode,
+  from the local seeded data. They were taken in headless Brave at device
+  scale 2 (`DPR` option added to `scratch/dashboard-check.mjs`), with the
+  Next.js dev indicator removed before capture. Total 1.1 MB.
+- **Fresh-clone check** of the setup steps, in
+  `scratch/readme-check/UserAnalyticsApplication` (a clone of `492f51d`):
+  - Steps run: `docker compose up -d` (with `COMPOSE_PROJECT_NAME=causalfunnel`,
+    so it reused the running container instead of binding :27017 twice),
+    then copying the env files, `npm install` (25 s; the mongod binary,
+    141 MB, landed in `node_modules/.cache`), `npm run seed`, and
+    `npm run seed -- --reset --base-url http://localhost:4100`.
+  - Its own database `causalfunnel_readme` and ports 4100/3100, so the dev
+    data and the running dev servers on 4000/3000 were untouched. The API and
+    the dashboard were started with the two workspace scripts that
+    `npm run dev` combines.
+  - Results: `/health`, `/demo/` and `/tracker.js` answer. The README's curl
+    example returns `{"accepted":1,"rejected":0}`. A repeated query param
+    gets 400, an unknown session 404, and CORS allows the configured origin.
+    A visit in headless Brave reached the API by beacon on navigation. The
+    clone's dashboard showed the sessions list, the journey and the mobile
+    heatmap, with the iframe loading and no console or network errors.
+  - In the clone: `npm test` 145 passed (`--project tracker` 24),
+    `npm -w dashboard test` 57 passed, and typecheck, lint and build are clean.
+- The build shows `/sessions/[id]` as dynamic (rendered on demand), so the
+  README says the server renders "only the page shell" rather than "static
+  shells".
+
 ## 2026-10-14 — Heatmap: phone and tablet `y` scaled by page height
 - Closes the one Phase 6 miss (TODO §8). The user chose option B with a fix
   for short pages, and the most common height as the reference.

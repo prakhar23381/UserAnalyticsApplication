@@ -2,6 +2,74 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-13 — Phase 4: dashboard
+- `80ee86f` Setup.
+  - Scaffolded with `create-next-app@16.4.0` (Next 16.4, React 19.3,
+    Tailwind 4, TypeScript 5, ESLint 9), with `--skip-install` and with no
+    AGENTS.md, React Compiler, cache components or agent feedback. It was
+    then installed from the root (hoisted), and `swr` and `vitest` were
+    added to the workspace.
+  - Three scaffold traps fixed:
+    - The template `.gitignore` ignored `.env*`; it now un-ignores
+      `.env*.example`.
+    - `typecheck` runs `next typegen` before `tsc`.
+    - `next dev` wrote a `dashboard/AGENTS.md`; `agentRules: false` in
+      `next.config.ts` stops that, and Next removed the file itself.
+  - `lib/`:
+    - `api.ts`: fails fast without `NEXT_PUBLIC_API_URL`; `ApiError` carries
+      the status; `useApi` polls every 5 s.
+    - `heatmap.ts`: the Phase 4 D1 mapping, off-canvas counting, grid
+      binning and the `previewUrl` guard.
+    - `journey.ts`: page-visit grouping, source, page-view notes.
+    - `format.ts`: display helpers.
+  - App shell: Nav; `/` → `/sessions`; loading state with a cold-start
+    note; error states (full and stale); empty state; favicon.
+  - The `create-next-app` empty-folder constraint (Reference Decision of
+    2026-10-12) no longer applies: the scaffold came first, then the env
+    example.
+- `b72e55c` Sessions list and journey.
+  - `/sessions`: paginated with `?page=`, polled every 5 s, rows kept while
+    the next page loads, the whole row clickable, columns collapse on
+    phones.
+  - `/sessions/[id]`:
+    - Header facts: start, duration, events, pages, device and viewport,
+      and source (from `utm_source`, else the referrer).
+    - Timeline grouped by page visit: stopwatch offsets, badges, click
+      targets with (x, y), the arriving query string and outside referrer,
+      and a heatmap link per visit.
+    - "Session not found" for an unknown or invalid id.
+- `f7da0d4` Heatmap.
+  - `/heatmap?page=&device=&mode=`:
+    - Page picker: most-clicked page first; the default is pinned into the
+      URL, so polling can't switch it.
+    - Desktop / Tablet / Mobile tabs (D2) and a Dots / Grid toggle.
+  - The stage: the live page in a `sandbox=""` iframe at the reference
+    width, with an SVG overlay, scaled to fit.
+    - Dots have a white ring so they show on the demo's orange buttons.
+    - The stats line shows off-canvas clicks and the 5000 cap.
+    - The previous picture stays (dimmed) until the next response arrives.
+- Decisions D1 (mapping), D2 (no All tab), D3 (dashboard unit tests) and
+  browser-only fetching with a sandboxed iframe are in the recovery context
+  §4. Tests: 46 dashboard (`npm -w dashboard test`), 145 server, all green.
+  Typecheck, lint and build are clean.
+- Browser check in headless Brave 152 (`scratch/dashboard-check.mjs`; API
+  and dashboard dev servers on the dev database):
+  - Sessions, pagination (page 3, an out-of-range page 9), row click, the
+    seeded and real journeys and the not-found page work in light and dark
+    themes at 1280 and 375, with no console errors.
+  - Heatmap dots and grid land on the demo's buttons, links and photos for
+    desktop, tablet and mobile. That includes the real desktop clicks
+    recorded at `doc_w` 1425, which the centre anchoring shifts by 72.5 px.
+  - Event counts were 228 / 92 page views before and after six heatmap
+    previews: the iframe records nothing.
+  - The journey → heatmap link opens the right page and device.
+- Found, not fixed: the `products.html` heading sits outside the container
+  padding (Phase 3 demo CSS). It's a TODO item, because fixing it means
+  re-measuring the seed layout.
+- `npm audit`: 5 high, all one `braces` advisory reached only through
+  `eslint-config-next` (lint time). It was left as is; npm's fix is a
+  downgrade to `eslint-config-next@14`.
+
 ## 2026-10-13 — Phase 3 closed: seed script
 - `b19e238` `server/scripts/seed.js`, run as `npm run seed` (root or `-w server`).
   - **Journeys:** each session has an entry page and a source (direct, Google,

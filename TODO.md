@@ -79,31 +79,7 @@ CausalFunnel/
 │       ├── setup.js             # a database per test file
 │       ├── factories.js         # stored-event builders
 │       └── {app,normalizeUrl,validateEvent,events,sessions,pages,heatmap,demo,tracker,seed}.test.js
-└── dashboard/
-    ├── package.json
-    ├── .env.local.example
-    ├── next.config.ts
-    └── src/
-        ├── app/
-        │   ├── layout.tsx               # shell + <Nav/>
-        │   ├── page.tsx                 # redirect → /sessions
-        │   ├── sessions/page.tsx        # Sessions View (list)
-        │   ├── sessions/[id]/page.tsx   # User journey
-        │   └── heatmap/page.tsx         # Heatmap View
-        ├── components/
-        │   ├── Nav.tsx
-        │   ├── SessionsTable.tsx
-        │   ├── Pagination.tsx
-        │   ├── EventTimeline.tsx
-        │   ├── EventBadge.tsx
-        │   ├── PageSelector.tsx
-        │   ├── DeviceTabs.tsx
-        │   ├── Heatmap.tsx              # iframe + SVG overlay
-        │   └── EmptyState.tsx
-        └── lib/
-            ├── api.ts                   # fetcher + endpoint helpers
-            ├── types.ts
-            └── format.ts                # short ids, durations, relative times
+└── dashboard/                   # ✅ exists (Phase 4); file list in CLAUDE.md §3
 ```
 
 > Tracker + demo live inside `server/public/` so one Render deploy serves API, tracker and demo — no copy/build step.
@@ -133,94 +109,19 @@ decision; list them in the README as next steps.
 
 Done, including the seed script (see `STATUS_LOG.md`).
 
+- [ ] **[S]** `products.html`: the "Our coffee" heading sits outside the container's 20 px padding (80 px from the edge at 1280, 0 px at 768 and 375; the header and cards are padded). Found in the Phase 4 heatmap preview. The fix can change text wrapping on mobile, so re-measure the seed's `LAYOUT` afterwards (`scratch/measure-layout.mjs`) and re-run `seed.test.js`.
+
 ---
 
 ## 6. Phase 4 — Dashboard (Next.js)
 
-### 6.1 Setup
-- [ ] **[M]** `npx create-next-app@latest dashboard --ts --tailwind --app --src-dir --eslint`
-- [ ] **[M]** `dashboard/.env.local.example` — only **after** the scaffold (`create-next-app` refuses a non-empty target folder)
-  ```
-  NEXT_PUBLIC_API_URL=http://localhost:4000
-  ```
-- [ ] **[M]** `npm i swr -w dashboard` (from root)
-- [ ] **[M]** Add `"typecheck": "tsc --noEmit"` to `dashboard/package.json` scripts (CLAUDE.md §2 depends on it)
-- [ ] **[M]** `lib/api.ts`: `API_URL = process.env.NEXT_PUBLIC_API_URL`; `fetcher`; helpers `sessionsUrl(page)`, `sessionEventsUrl(id)`, `pagesUrl()`, `heatmapUrl(page, device)`
-- [ ] **[M]** `lib/types.ts` — matches the server responses as built in Phase 1:
-  ```ts
-  export type EventType = 'page_view' | 'click';
-  export type Device = 'mobile' | 'tablet' | 'desktop';
-  export interface TrackedEvent {
-    _id: string; session_id: string; type: EventType;
-    page_url: string; raw_url: string; timestamp: string; received_at: string;
-    x?: number; y?: number; target?: { tag?: string; id?: string; classes?: string; text?: string };
-    viewport_w: number; viewport_h: number; doc_w: number; doc_h: number; device: Device;
-    referrer?: string; user_agent?: string;
-  }
-  export interface SessionEvents { session_id: string; events: TrackedEvent[] }
-  export interface SessionSummary {
-    session_id: string; event_count: number; page_views: number; clicks: number;
-    first_seen: string; last_seen: string; duration_ms: number;
-    entry_page: string; pages_visited: number; device: Device;
-  }
-  export interface Paginated<T> { data: T[]; page: number; limit: number; total: number }
-  export interface PageSummary { page_url: string; page_views: number; clicks: number; last_seen: string }
-  export interface PagesResponse { data: PageSummary[] }
-  export interface HeatmapClick { x: number; y: number; doc_w: number; doc_h: number; viewport_w: number; device: Device }
-  export interface HeatmapResponse {
-    page_url: string; device: Device | 'all';
-    total_clicks: number;   // uncapped; clicks.length ≤ 5000
-    clicks: HeatmapClick[];
-  }
-  export interface ApiError { error: string }
-  ```
-- [ ] **[M]** `layout.tsx` with `Nav` (Sessions · Heatmap · "Open demo site ↗")
-- [ ] **[M]** `app/page.tsx` → `redirect('/sessions')`
-
-### 6.2 Sessions View — `/sessions` **[M]**
-- [ ] `SessionsTable` via `useSWR(sessionsUrl(page), { refreshInterval: 5000 })` **[S: live polling]**
-- [ ] Columns: Session (short id, monospace) · Events · Page views · Clicks · Device · Started (relative) · Duration · Entry page (path only)
-- [ ] Whole row clickable → `/sessions/[id]`
-- [ ] `Pagination` (prev/next + "showing x–y of total"); page in query string
-- [ ] Loading skeleton, error state, `EmptyState` ("No sessions yet — open the demo site and click around" + link)
-
-### 6.3 Session detail (user journey) — `/sessions/[id]` **[M]**
-- [ ] Header: session id, device, started at, duration, # events, # pages
-- [ ] `EventTimeline`: vertical list ordered by timestamp
-  - offset from session start (`+01:23`) + absolute time on hover
-  - `EventBadge` (page_view / click, different colors)
-  - page path
-  - clicks: `(x, y)` + target summary, e.g. `button#add-to-cart "Add to cart"`
-- [ ] **[S]** Group consecutive events under each page visit (page_view starts a group)
-- [ ] **[S]** "View heatmap for this page →" link per page group (`/heatmap?page=...`)
-- [ ] 404 state for unknown session; back link to list
-
-### 6.4 Heatmap View — `/heatmap` **[M]**
-- [ ] `PageSelector`: dropdown from `/api/pages` showing `path (N clicks)`; selection synced to `?page=` query param
-- [ ] **[S]** `DeviceTabs`: All · Desktop · Tablet · Mobile (synced to `?device=`)
-- [ ] **[M]** `Heatmap` component:
-  - reference width per device: desktop `1280`, tablet `768`, mobile `375` (all → desktop)
-  - map each click: `rx = (x / doc_w) * refW`, `ry = y * (refW / doc_w)`
-  - canvas height = max scaled `doc_h` across clicks
-  - **[S]** background: `<iframe src={page_url + '?cf_preview=1'} width={refW} height={H} />` with `pointer-events: none`
-  - overlay: `<svg viewBox="0 0 refW H">` absolutely positioned over iframe
-  - whole stage scaled to container width with CSS `transform: scale(containerW / refW)`, `transform-origin: top left`
-- [ ] **[M]** Mode toggle:
-  - **Dots**: `<circle r=8 fill="red" opacity=0.35>` → overlaps show density
-  - **[S] Grid**: bin into 40px cells, `<rect>` with opacity ∝ count / maxCount
-- [ ] Stats line: total clicks shown, device filter, "x clicks hidden (limit)" if capped
-- [ ] Empty states: no page selected / page has no clicks
-
-### 6.5 Polish **[S]**
-- [ ] Consistent formatting helpers in `format.ts` (`shortId`, `formatDuration`, `timeAgo`, `pathOf(url)`)
-- [ ] Dark-mode-safe Tailwind colors; usable at mobile width
-- [ ] Favicon + page titles
+Done (see `STATUS_LOG.md`).
 
 ---
 
-## 7. Phase 5 — Tests (server)
+## 7. Phase 5 — Tests
 
-Server tests were written with Phase 1 (see `STATUS_LOG.md`). New server code adds its tests in the same change.
+Server tests were written with Phase 1, dashboard unit tests for `src/lib/` with Phase 4 (see `STATUS_LOG.md`). New code adds its tests in the same change.
 
 - [ ] **[X]** Dashboard: one Playwright smoke test (sessions list renders, heatmap shows dots)
 
@@ -234,8 +135,7 @@ Server tests were written with Phase 1 (see `STATUS_LOG.md`). New server code ad
 - [ ] Dashboard `/sessions` shows the session within ~5s; journey is in the right order
 - [ ] Heatmap: dots line up with the buttons you clicked (desktop), then resize to mobile, click, check Mobile tab
 - [ ] Wait 30+ min (or temporarily set timeout to 1 min) → new session id created
-- [ ] Open heatmap → confirm the iframe did **not** create new page_views
-- [ ] `npm test` green
+- [ ] `npm test` and `npm -w dashboard test` green
 
 ---
 
@@ -247,6 +147,9 @@ Server tests were written with Phase 1 (see `STATUS_LOG.md`). New server code ad
   - env: `MONGODB_URI`, `DASHBOARD_ORIGIN=https://<app>.vercel.app`, `NODE_ENV=production`
   - note: free tier sleeps → first request ~30–50s (mention in README)
 - [ ] **[S] Vercel**: import repo, root dir `dashboard`, env `NEXT_PUBLIC_API_URL=https://<server>.onrender.com`
+  - the only lockfile is the root `package-lock.json` (npm workspaces): check that Vercel installs from the repo root
+  - a build without `NEXT_PUBLIC_API_URL` fails on purpose (`lib/api.ts`)
+  - Render's `DASHBOARD_ORIGIN` must be the exact Vercel origin: it is both the CORS allow-list and the CSP `frame-ancestors` the heatmap iframe needs
 - [ ] **[S]** Set `PRODUCTION_DASHBOARD_URL` in `server/public/demo/demo.js` (until then the footer dashboard link is hidden off localhost). The tracker needs no change: demo pages load the same-origin `/tracker.js`
 - [ ] **[S]** Seed production once so reviewers see data immediately:
   `MONGODB_URI=<atlas uri> npm run seed -- --base-url https://<server>.onrender.com --allow-remote`
@@ -275,7 +178,11 @@ Server tests were written with Phase 1 (see `STATUS_LOG.md`). New server code ad
 - [ ] **[M]** Assumptions & trade-offs:
   - Session = 30-min inactivity window, shared across tabs, client-generated & trusted
   - URL normalization drops query/hash (UTM variants merge; genuinely different `?id=` pages merge too)
-  - Heatmap uses `x` as % of document width + device buckets; not exact on fluid layouts — element-relative coords would be the next step
+  - Heatmap places clicks by device bucket, drawn at 1280 / 768 / 375: `y` as recorded; desktop `x` measured from the page centre (exact for centred-column sites at any width), tablet/mobile `x` as a share of the width (fluid layouts). Wrong for full-width or left-aligned desktop layouts; clicks off the canvas are counted, not drawn. Element-relative coords would be the next step
+  - No "All devices" heatmap: mixing layouts would put clicks on the wrong elements (the API still accepts `device=all`)
+  - Heatmap background is the live page in a sandboxed iframe (no scripts, no navigation, `cf_preview=1`, http(s) only). It shows the page as it is now, not as it was when clicked; ingestion is open, so a stored `page_url` is untrusted
+  - Dashboard fetches from the browser (SWR); its pages are static shells, so a sleeping API shows a "waking up" note instead of a blank page
+  - `npm audit` reports a `braces` advisory via `eslint-config-next` (lint-time only, not shipped); npm's "fix" downgrades to Next 14's config
   - Sessions list is aggregated on read; at scale → maintain a `sessions` collection on ingest or pre-aggregate
   - Heatmap capped at 5000 newest clicks
   - Client timestamps can be skewed; `received_at` kept for that reason

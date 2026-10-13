@@ -28,7 +28,8 @@ the `causalfunnel-engineer` subagent reads it through the symlink
   - **Frontend:** Next.js (App Router), TypeScript, Tailwind, SWR (5s polling).
   - **Backend:** Node 22.12+, Express, ESM JavaScript, Mongoose. Stateless.
     MongoDB for persistence (Docker locally, Atlas M0 in production).
-  - **Tests:** Vitest + supertest + mongodb-memory-server (server only).
+  - **Tests:** Vitest + supertest + mongodb-memory-server (server); Vitest
+    for the dashboard's pure `src/lib/` helpers (no DOM, no React).
   - **Hosting:** Render (API + tracker + demo pages), Vercel (dashboard), Atlas (DB).
 - **Primary workflow:** a visitor browses the demo pages → `tracker.js`
   batches events → `POST /api/events` → `events` collection in MongoDB → a
@@ -59,8 +60,9 @@ docker compose up -d                  # local MongoDB on :27017
 npm install                           # deps for all workspaces — run from <root> only
 npm run dev                           # API :4000 + dashboard :3000 (concurrently)
 npm -w dashboard run build            # production build -> dashboard/.next/
-npm -w dashboard run typecheck        # tsc --noEmit
+npm -w dashboard run typecheck        # next typegen && tsc --noEmit
 npm -w dashboard run lint             # eslint
+npm -w dashboard test                 # dashboard unit tests (src/lib/*.test.ts)
 npm test                              # server tests: Vitest projects `api` + `tracker`
 npm test -- --project tracker         # one Vitest project only (args are forwarded)
 npm -w server run dev                 # API only (node --watch); also serves /tracker.js and /demo/
@@ -70,14 +72,18 @@ npm -w server run seed -- --reset     # wipe + seed fake sessions — local DB o
 Local URLs: demo `http://localhost:4000/demo/` · dashboard `http://localhost:3000` · health `http://localhost:4000/health`.
 
 Toolchain facts that are easy to get wrong:
-- The dashboard scripts (`dev` for the dashboard, `build`, `typecheck`, `lint`) are created in TODO Phase 4. Until then, they do not exist — check `package.json` before running one.
+- The root `npm test` runs the **server** suites only; the dashboard's tests are `npm -w dashboard test`. Run both for a change that touches both.
+- `typecheck` runs `next typegen` first: `next-env.d.ts` imports `.next/types/routes.d.ts`, and the global `PageProps` / `LayoutProps` helpers come from it, so a bare `tsc --noEmit` fails on a fresh clone.
+- `dashboard/next.config.ts` sets `agentRules: false`. Without it, `next dev` writes a `dashboard/AGENTS.md` whenever it detects a coding agent. This file stays the only rules file. Version-matched Next.js 16 docs are in `node_modules/next/dist/docs/`.
+- Tailwind 4 runs through the `@tailwindcss/turbopack` loader in `next.config.ts`, not PostCSS. A `next build --webpack` would ship without styles.
+- `dashboard/src/lib/api.ts` throws at import when `NEXT_PUBLIC_API_URL` is unset, so a build without it fails loudly instead of pointing at nothing.
 - There is no Python and no virtualenv. Flask is allowed by the spec, but this project doesn't use it.
 - Add dependencies with `npm i <pkg> -w server` or `-w dashboard` from `<root>`, never with `npm install` inside a workspace folder.
 - The server is ESM (`"type": "module"`), so relative imports need the `.js` extension.
 - When an npm-workspace script takes arguments, they follow the workspace command: `npm -w server run seed -- --reset`.
 - `npm install` downloads a `mongod` binary (~150 MB) for mongodb-memory-server into `<root>/node_modules/.cache/mongodb-memory-server`. Run anything that uses mongodb-memory-server through an npm script. A plain `node` run from `server/` downloads a second copy to `~/.cache/mongodb-binaries`, outside the repo, unless `MONGOMS_DOWNLOAD_DIR` points at the repo cache.
 - Server tests need no running MongoDB: one in-memory `mongod` per run, one database per test file.
-- Browser checks (§6): there is no Chrome on this Mac; Brave (Chromium) is at `/Applications/Brave Browser.app`. `scratch/browser-check.mjs` drives it headless over the DevTools Protocol (`--headless --remote-debugging-port=9333 --user-data-dir=<scratch profile>`). Stop it with `pkill -f "user-data-dir=<that profile>"` so the user's own Brave is never touched. Beacons sent while a page unloads don't appear in the page's CDP Network log; their stored events are the evidence.
+- Browser checks (§6): there is no Chrome on this Mac; Brave (Chromium) is at `/Applications/Brave Browser.app`. `scratch/browser-check.mjs` drives it headless over the DevTools Protocol (`--headless --remote-debugging-port=9333 --user-data-dir=<scratch profile>`). Stop it with `pkill -f "user-data-dir=<that profile>"` so the user's own Brave is never touched. Beacons sent while a page unloads don't appear in the page's CDP Network log; their stored events are the evidence. `scratch/dashboard-check.mjs` loads dashboard URLs and saves screenshots. Take heatmap screenshots with `FULL=0` and a tall viewport: a full-page capture (`captureBeyondViewport`) leaves the cross-origin iframe blank. Errors inside that iframe log to its own CDP target (`scratch/iframe-debug.mjs`).
 - Demo pages get the server's CSP (`script-src 'self'`, `script-src-attr 'none'`, `img-src 'self' data:`): no inline `<script>`, no `on*=` attributes, no images from other hosts. `test/demo.test.js` enforces it.
 - Tracker tests run `public/tracker.js` in happy-dom, loaded through a real `<script src>` (a virtual server maps `http://localhost:4000/` to `public/`). happy-dom has no layout: `pageX`, `scrollWidth` and `getBoundingClientRect()` are 0 unless a test sets them.
 
@@ -119,15 +125,27 @@ Toolchain facts that are easy to get wrong:
 │   │   └── demo/                 index.html, products.html, about.html, demo.css, demo.js (served at /demo/)
 │   ├── scripts/seed.js           `npm run seed`: fake demo sessions; `--reset` deletes only `seed_` sessions
 │   └── test/                     globalSetup.js, setup.js, factories.js, *.test.js (tracker.test.js: happy-dom)
-├── scratch/                      git-ignored; browser-check.mjs, measure-layout.mjs (headless Brave over CDP)
+├── dashboard/                    Next.js 16 (App Router, TypeScript, Tailwind 4, SWR)
+│   ├── package.json  next.config.ts  tsconfig.json  eslint.config.mjs
+│   ├── .gitignore                ignores .env* but not .env*.example
+│   ├── .env.local.example        NEXT_PUBLIC_API_URL; .env.local is local only, git-ignored
+│   └── src/
+│       ├── app/                  layout.tsx (Nav), page.tsx (→ /sessions), icon.svg, globals.css,
+│       │                         sessions/page.tsx, sessions/[id]/page.tsx, heatmap/page.tsx
+│       ├── components/           Nav, PageHeading, States (loading/error/empty), RelativeTime,
+│       │                         SessionsTable, Pagination, SessionJourney, EventTimeline, EventBadge,
+│       │                         HeatmapView, PageSelector, Segmented, Heatmap
+│       └── lib/                  api.ts (useApi, URLs), types.ts, format.ts, journey.ts, heatmap.ts,
+│                                 *.test.ts (Vitest)
+├── scratch/                      git-ignored; browser-check.mjs, measure-layout.mjs, dashboard-check.mjs,
+│                                 iframe-debug.mjs (headless Brave over CDP), shots/
 └── .gitignore
 ```
 
-Planned, not yet created (full layout in `TODO.md` §1):
+Planned, not yet created:
 
 ```text
-├── README.md
-└── dashboard/       Next.js dashboard; src/app, src/components, src/lib, .env.local.example
+└── README.md
 ```
 
 > [!IMPORTANT]
@@ -207,13 +225,14 @@ No source file changes without passing through these phases in order.
 ### Phase 3: Implement
 - Track progress in `TODO.md`.
 - Change code in increments. At each stage, run `npm test` for server changes
-  and `npm -w dashboard run typecheck` for dashboard changes.
+  and `npm -w dashboard run typecheck` plus `npm -w dashboard test` for
+  dashboard changes.
 - No ad-hoc edits outside the approved plan. If the plan turns out to be wrong,
   stop and report rather than improvising.
 
 ## 6) Post-Implementation Checklist
 - [ ] `npm -w dashboard run build`, `typecheck` and `lint` are clean
-- [ ] `npm test` is green
+- [ ] `npm test` (server) and `npm -w dashboard test` are green
 - [ ] Tracker or demo changes: checked in a browser at `http://localhost:4000/demo/`. In the Network tab, batches go out as `text/plain` and get 202. A beacon fires on navigation, and the console shows no errors on the host page.
 - [ ] API or schema changes: response shapes still match `dashboard/src/lib/types.ts`, and indexes still cover every query (§4)
 - [ ] Check for regressions and race conditions in async actions, state updates and API calls. Watch for SWR polling overlapping navigation, and for batch flushes overlapping `pagehide`.

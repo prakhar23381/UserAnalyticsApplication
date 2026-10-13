@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { binPoints, layoutClicks, placeClick } from './heatmap';
+import { binPoints, layoutClicks, placeClick, previewUrl } from './heatmap';
 import type { Device, HeatmapClick } from './types';
 
 const click = (x: number, y: number, doc_w: number, device: Device = 'desktop', doc_h = 2000): HeatmapClick => ({
@@ -61,6 +61,21 @@ describe('layoutClicks', () => {
 
   it('is empty without clicks', () => {
     expect(layoutClicks([], 'mobile')).toEqual({ width: 375, height: 0, points: [], outside: 0 });
+  });
+});
+
+describe('previewUrl', () => {
+  it('adds cf_preview=1 so the tracker on the page stays quiet', () => {
+    expect(previewUrl('http://localhost:4000/demo')).toBe('http://localhost:4000/demo?cf_preview=1');
+    expect(previewUrl('https://example.com/demo/products.html')).toBe(
+      'https://example.com/demo/products.html?cf_preview=1',
+    );
+  });
+
+  it('refuses anything that is not an http(s) URL', () => {
+    expect(previewUrl('javascript:alert(1)')).toBeNull();
+    expect(previewUrl('data:text/html,hi')).toBeNull();
+    expect(previewUrl('not a url')).toBeNull();
   });
 });
 

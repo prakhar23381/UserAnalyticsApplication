@@ -57,6 +57,22 @@ export function layoutClicks(clicks: HeatmapClick[], device: Device): ClickLayou
   return { width, height: Math.ceil(height), points, outside };
 }
 
+/**
+ * The page to draw behind the clicks, with `cf_preview=1` so the tracker on it
+ * stays quiet. Null for anything but http(s): ingestion is open, so a stored
+ * page_url is untrusted input.
+ */
+export function previewUrl(pageUrl: string): string | null {
+  try {
+    const url = new URL(pageUrl);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    url.searchParams.set('cf_preview', '1');
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 /** Counts points per square cell; `max` is the busiest cell's count. */
 export function binPoints(points: Point[], size = GRID_CELL): { cells: Cell[]; max: number } {
   const cells = new Map<string, Cell>();

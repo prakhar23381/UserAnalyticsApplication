@@ -28,7 +28,7 @@ router.get('/heatmap', async (req, res) => {
   const filter = { page_url: pageUrl, type: 'click', ...(device !== 'all' && { device }) };
   const [total_clicks, clicks] = await Promise.all([
     Event.countDocuments(filter),
-    Event.find(filter, { _id: 0, x: 1, y: 1, doc_w: 1, doc_h: 1, viewport_w: 1, device: 1 })
+    Event.find(filter, { _id: 0, x: 1, y: 1, doc_w: 1, doc_h: 1, viewport_w: 1, viewport_h: 1, device: 1 })
       .sort({ timestamp: -1 })
       .limit(HEATMAP_LIMIT)
       .lean(),

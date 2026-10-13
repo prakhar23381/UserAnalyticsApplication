@@ -75,6 +75,7 @@ export interface HeatmapClick {
   doc_w: number;
   doc_h: number;
   viewport_w: number;
+  viewport_h: number;
   device: Device;
 }
 

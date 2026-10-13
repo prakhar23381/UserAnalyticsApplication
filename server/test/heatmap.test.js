@@ -23,8 +23,8 @@ describe('GET /api/heatmap', () => {
       device: 'all',
       total_clicks: 2,
       clicks: [
-        { x: 20, y: 21, doc_w: 1440, doc_h: 2400, viewport_w: 1440, device: 'desktop' },
-        { x: 10, y: 11, doc_w: 1440, doc_h: 2400, viewport_w: 1440, device: 'desktop' },
+        { x: 20, y: 21, doc_w: 1440, doc_h: 2400, viewport_w: 1440, viewport_h: 900, device: 'desktop' },
+        { x: 10, y: 11, doc_w: 1440, doc_h: 2400, viewport_w: 1440, viewport_h: 900, device: 'desktop' },
       ],
     });
   });

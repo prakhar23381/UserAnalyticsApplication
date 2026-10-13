@@ -129,9 +129,7 @@ Server tests were written with Phase 1, dashboard unit tests for `src/lib/` with
 
 ## 8. Phase 6 — Local end-to-end check
 
-Done (see `STATUS_LOG.md`); rerun with `node scratch/e2e-check.mjs` (needs `npm run dev` and a fresh headless Brave profile).
-
-- [ ] **[S]** **Decision pending (user):** phone/tablet heatmap `y`. Raw `y` (Phase 4 D1) drifts with text reflow on fluid layouts: the About page CTA clicked at 390 px is drawn 51 px above the button on the 375 px heatmap. Scaling `y` by document height (`y × refH / doc_h`, `refH` from clicks recorded at exactly the reference width) put all 4 phone clicks on their elements. Desktop stays raw (exact).
+Done, including the phone/tablet `y` fix it found (see `STATUS_LOG.md`); rerun with `node scratch/e2e-check.mjs` (needs `npm run dev` and a fresh headless Brave profile).
 
 ---
 

@@ -2,6 +2,31 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-14 — Heatmap: phone and tablet `y` scaled by page height
+- Closes the one Phase 6 miss (TODO §8). The user chose option B with a fix
+  for short pages, and the most common height as the reference.
+- **Mechanism** (`dashboard/src/lib/heatmap.ts`): `referenceHeight()` takes
+  the most common `doc_h` (the taller on a tie) among clicks recorded in a
+  window exactly the reference width (768 tablet, 375 mobile).
+  `placeClick()` scales `y` by `refHeight / doc_h`; `layoutClicks()`
+  computes the reference once and sizes the canvas from the scaled heights.
+  Desktop `y` is never scaled.
+- **The flaw found while planning:** `doc_h` is `scrollHeight`, which is the
+  window's height when the page is shorter than the window (seeded tablet
+  Home: `doc_h` 1024 in a 768×1024 window). Plain scaling would move an
+  iPad Air (820×1180) "Shop" click from y 340 to 295, off the button. Only
+  clicks with `doc_h > viewport_h` set the reference or get scaled.
+- **API change (additive):** `GET /api/heatmap` clicks now include
+  `viewport_h`. Same query, sort and index. `HeatmapClick` in
+  `dashboard/src/lib/types.ts` gained the field.
+- **Checked:** the stored e2e phone click on the About CTA (390×844,
+  `y` 3094, `doc_h` 3390) is drawn at (192.3, 3161.5), inside the button's
+  375 px box `[112, 3117, 152, 54]`. Before the change it sat 23 px above.
+  Confirmed on the live dashboard in headless Brave (Mobile tab, About).
+- Tests: `npm test` 145 passed. `npm -w dashboard test` 57 passed (+11:
+  `referenceHeight`, phone/tablet scaling, the iPad case, the e2e click; "never
+  scales y" became "never scales desktop y"). Typecheck and lint are clean.
+
 ## 2026-10-13 — Phase 6: local end-to-end check
 - The documented startup works from scratch: `docker compose up -d` →
   `npm install` → `npm run dev`. It starts the API (:4000) and the

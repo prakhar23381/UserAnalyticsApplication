@@ -25,7 +25,7 @@ export default function Nav() {
               key={href}
               href={href}
               aria-current={active ? 'page' : undefined}
-              className={`rounded-md px-3 py-1.5 font-medium ${
+              className={`rounded-md px-2 py-1.5 font-medium sm:px-3 ${
                 active
                   ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300'
                   : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100'
@@ -39,7 +39,7 @@ export default function Nav() {
           href={DEMO_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="ml-auto rounded-md px-3 py-1.5 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+          className="ml-auto whitespace-nowrap rounded-md px-2 py-1.5 text-neutral-600 sm:px-3 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
         >
           <span className="hidden sm:inline">Open demo site</span>
           <span className="sm:hidden">Demo</span> ↗

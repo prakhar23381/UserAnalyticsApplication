@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupByPageVisit } from './journey';
+import { groupByPageVisit, pageViewNote, sourceOf } from './journey';
 import type { EventType, TrackedEvent } from './types';
 
 const HOME = 'http://localhost:4000/demo';
@@ -58,5 +58,29 @@ describe('groupByPageVisit', () => {
 
   it('returns no visits for no events', () => {
     expect(groupByPageVisit([])).toEqual([]);
+  });
+});
+
+describe('sourceOf', () => {
+  it('prefers utm_source from the landing URL', () => {
+    const landing = { ...event('page_view', HOME), raw_url: `${HOME}/?utm_source=newsletter`, referrer: 'https://www.google.com/' };
+    expect(sourceOf(landing)).toBe('newsletter');
+  });
+
+  it('falls back to the referring host, then to Direct', () => {
+    expect(sourceOf({ ...event('page_view', HOME), referrer: 'https://www.google.com/search?q=coffee' })).toBe('www.google.com');
+    expect(sourceOf(event('page_view', HOME))).toBe('Direct');
+    expect(sourceOf({ ...event('page_view', HOME), referrer: 'not a url' })).toBe('Direct');
+  });
+});
+
+describe('pageViewNote', () => {
+  it('shows the query string and an outside referrer', () => {
+    const view = { ...event('page_view', HOME), raw_url: `${HOME}?utm_source=instagram`, referrer: 'https://l.instagram.com/' };
+    expect(pageViewNote(view)).toBe('?utm_source=instagram · from l.instagram.com');
+  });
+
+  it('leaves out a referrer on the same site', () => {
+    expect(pageViewNote({ ...event('page_view', PRODUCTS), referrer: `${HOME}/` })).toBe('');
   });
 });

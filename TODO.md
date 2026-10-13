@@ -129,13 +129,9 @@ Server tests were written with Phase 1, dashboard unit tests for `src/lib/` with
 
 ## 8. Phase 6 — Local end-to-end check
 
-- [ ] `docker compose up -d` → `npm install` → `npm run dev`
-- [ ] Open `http://localhost:4000/demo/`, navigate all 3 pages, click buttons
-- [ ] DevTools → Network: batches go out as `text/plain`, 202 responses, beacon on navigation
-- [ ] Dashboard `/sessions` shows the session within ~5s; journey is in the right order
-- [ ] Heatmap: dots line up with the buttons you clicked (desktop), then resize to mobile, click, check Mobile tab
-- [ ] Wait 30+ min (or temporarily set timeout to 1 min) → new session id created
-- [ ] `npm test` and `npm -w dashboard test` green
+Done (see `STATUS_LOG.md`); rerun with `node scratch/e2e-check.mjs` (needs `npm run dev` and a fresh headless Brave profile).
+
+- [ ] **[S]** **Decision pending (user):** phone/tablet heatmap `y`. Raw `y` (Phase 4 D1) drifts with text reflow on fluid layouts: the About page CTA clicked at 390 px is drawn 51 px above the button on the 375 px heatmap. Scaling `y` by document height (`y × refH / doc_h`, `refH` from clicks recorded at exactly the reference width) put all 4 phone clicks on their elements. Desktop stays raw (exact).
 
 ---
 
@@ -180,7 +176,7 @@ Server tests were written with Phase 1, dashboard unit tests for `src/lib/` with
   - URL normalization drops query/hash (UTM variants merge; genuinely different `?id=` pages merge too)
   - Heatmap places clicks by device bucket, drawn at 1280 / 768 / 375: `y` as recorded; desktop `x` measured from the page centre (exact for centred-column sites at any width), tablet/mobile `x` as a share of the width (fluid layouts). Wrong for full-width or left-aligned desktop layouts; clicks off the canvas are counted, not drawn. Element-relative coords would be the next step
   - No "All devices" heatmap: mixing layouts would put clicks on the wrong elements (the API still accepts `device=all`)
-  - Heatmap background is the live page in a sandboxed iframe (no scripts, no navigation, `cf_preview=1`, http(s) only). It shows the page as it is now, not as it was when clicked; ingestion is open, so a stored `page_url` is untrusted
+  - Heatmap background is the live page in a sandboxed iframe (no scripts, no navigation, `cf_preview=1`, http(s) only). It shows the page as it is now, not as it was when clicked, and as served, before any script changes it (submitting the newsletter replaces the form with a shorter line, so the CTA below moved 12 px for the visitor but not in the preview); ingestion is open, so a stored `page_url` is untrusted
   - Dashboard fetches from the browser (SWR); its pages are static shells, so a sleeping API shows a "waking up" note instead of a blank page
   - `npm audit` reports a `braces` advisory via `eslint-config-next` (lint-time only, not shipped); npm's "fix" downgrades to Next 14's config
   - Sessions list is aggregated on read; at scale → maintain a `sessions` collection on ingest or pre-aggregate

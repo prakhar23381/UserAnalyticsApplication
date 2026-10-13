@@ -138,7 +138,7 @@ Toolchain facts that are easy to get wrong:
 │       └── lib/                  api.ts (useApi, URLs), types.ts, format.ts, journey.ts, heatmap.ts,
 │                                 *.test.ts (Vitest)
 ├── scratch/                      git-ignored; browser-check.mjs, measure-layout.mjs, dashboard-check.mjs,
-│                                 iframe-debug.mjs (headless Brave over CDP), shots/
+│                                 iframe-debug.mjs, e2e-check.mjs (Phase 6; headless Brave over CDP), shots/
 └── .gitignore
 ```
 

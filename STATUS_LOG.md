@@ -2,6 +2,55 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-13 — Phase 6: local end-to-end check
+- The documented startup works from scratch: `docker compose up -d` →
+  `npm install` → `npm run dev`. It starts the API (:4000) and the
+  dashboard (:3000) together; `next dev` no longer writes an AGENTS.md. The
+  previous session's background API (`node --watch`, since 03:11) was
+  stopped first to free the port.
+- `scratch/e2e-check.mjs` (git-ignored) drives headless Brave 152 over CDP
+  with a fresh profile and real mouse clicks. Final run: **23/24 checks
+  pass**. The first run's two "not drawn" failures were the script
+  comparing against its own measured points; the dashboard draws the stored
+  values, which the browser rounds by up to 0.9 px. Results:
+  - **Desktop at 1512 px**, which isn't a reference width: home → products
+    (3 adds) → about (newsletter with a typed email) → bottom CTA →
+    products.
+    - All 12 events were stored in order, with x/y within 1 px of the
+      clicks, `doc_w` 1512, `raw_url` keeping `?utm_source=e2e`, and
+      `page_url` normalized.
+    - The typed email appears in no stored event and no request body.
+    - Batches are POST `text/plain` with 202 responses. The home page's
+      queued events arrived through the pagehide beacon.
+  - **Journey page:** 4 visits in order, with source `e2e`.
+  - **Heatmap (desktop):** all 8 desktop clicks are drawn on the 1280
+    layout, and each lands on the element that was clicked (centre
+    anchoring, Phase 4 D1). Event count was unchanged by the previews
+    (262 → 262).
+  - **Same visitor at 390 px (phone):** the session is kept, and the 7
+    events are stored as `mobile`. All 4 phone dots are drawn, and 3 of 4
+    land on their elements.
+  - **The miss:** the About page's bottom CTA. The page is 51 px shorter at
+    390 than at 375 (text reflow), so with raw `y` the dot sits above the
+    button. Scaling `y` by document height (`y × refH / doc_h`, where
+    `refH` comes from the seeded 375 px clicks) put all 4 on their
+    elements. The decision is with the user (TODO §8).
+  - **Script-changed DOM:** submitting the newsletter replaces the form
+    with a shorter line, so the desktop CTA below it moved 12 px for the
+    visitor. The static preview doesn't show this; the dot still landed on
+    the button. Added to the README trade-offs.
+  - **Inactivity timeout,** by ageing `cf_session.last_activity` in a
+    second tab (no code change): 29 min idle keeps the session, 31 min
+    starts a new one, whose first event is the page view.
+  - **Live update:** the new session appeared on the already-open
+    `/sessions` page without a reload, 8.9 s after the visit (up to 5 s
+    tracker flush plus up to 5 s poll). The test keeps that tab focused,
+    because SWR doesn't poll hidden tabs.
+  - No console errors on the demo pages; every ingest response seen was 202.
+- `npm test`: 145 passed. `npm -w dashboard test`: 46 passed.
+- The two e2e runs added 4 real tracker sessions to the local `causalfunnel`
+  database (now 272 events, 48 sessions).
+
 ## 2026-10-13 — Phase 4: dashboard
 - `80ee86f` Setup.
   - Scaffolded with `create-next-app@16.4.0` (Next 16.4, React 19.3,

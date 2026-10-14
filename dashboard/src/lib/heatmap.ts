@@ -242,3 +242,60 @@ export function elementLabel(element: Pick<RankedElement, 'key' | 'selector' | '
   else name = element.key;
   return { name, detail: element.selector ?? element.key };
 }
+
+// ---- Area tool ----
+
+/** A rectangle on the reference layout, in whole px. */
+export type Area = Box;
+
+/** A rectangle from two corners dragged in any direction, kept on the canvas. */
+export function areaFrom(a: Point, b: Point, width: number, height: number): Area {
+  const clampX = (v: number) => Math.min(Math.max(Math.round(v), 0), width);
+  const clampY = (v: number) => Math.min(Math.max(Math.round(v), 0), height);
+  const x1 = clampX(Math.min(a.x, b.x));
+  const y1 = clampY(Math.min(a.y, b.y));
+  return { x: x1, y: y1, w: clampX(Math.max(a.x, b.x)) - x1, h: clampY(Math.max(a.y, b.y)) - y1 };
+}
+
+/** `?area=x,y,w,h` → an area, or null when missing, malformed or too small to mean anything. */
+export function parseArea(value: string | null): Area | null {
+  if (!value) return null;
+  const parts = value.split(',');
+  if (parts.length !== 4 || !parts.every((part) => /^\d{1,6}$/.test(part))) return null;
+  const [x, y, w, h] = parts.map(Number);
+  return w >= 4 && h >= 4 ? { x, y, w, h } : null;
+}
+
+export const areaParam = (area: Area): string => [area.x, area.y, area.w, area.h].join(',');
+
+/** How many points fall inside the area (edges included). */
+export function countInArea(points: Point[], area: Area): number {
+  return points.filter((p) => p.x >= area.x && p.x <= area.x + area.w && p.y >= area.y && p.y <= area.y + area.h).length;
+}
+
+// ---- CSV export ----
+
+/**
+ * One CSV cell: quoted when needed, and a leading = + - @ neutralised so a
+ * spreadsheet doesn't run it as a formula (element text comes from any site).
+ */
+function csvCell(value: string | number | null): string {
+  if (value === null) return '';
+  let text = String(value);
+  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+/** The ranked elements as CSV, with a header row. */
+export function elementsCsv(elements: RankedElement[]): string {
+  const header = ['rank', 'element', 'selector', 'clicks', 'share', 'sessions'];
+  const rows = elements.map((element) => [
+    element.rank,
+    elementLabel(element).name,
+    element.selector ?? element.key,
+    element.clicks,
+    element.share,
+    element.sessions,
+  ]);
+  return `${[header, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n')}\r\n`;
+}

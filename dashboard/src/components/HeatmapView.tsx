@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronsRight, CircleDot, Eye, EyeOff, Flame, Grid3x3, X } from 'lucide-react';
+import { ChevronsRight, CircleDot, Eye, EyeOff, Flame, Grid3x3, SquareDashedMousePointer, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
@@ -13,7 +13,8 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import ToggleGroup, { type ToggleOption } from '@/components/ToggleGroup';
 import { DEMO_URL, elementsUrl, heatmapUrl, pagesUrl, useApi } from '@/lib/api';
 import { pathOf } from '@/lib/format';
-import { elementLabel, elementMarks, layoutClicks } from '@/lib/heatmap';
+import { areaParam, countInArea, elementLabel, elementMarks, layoutClicks, parseArea } from '@/lib/heatmap';
+import { formatRate } from '@/lib/overview';
 import { useApiFilters, useDashboardHref, useFilters } from '@/lib/navigation';
 import { isWatched, toggleWatch } from '@/lib/segments';
 import { useWatchlist } from '@/lib/storage';
@@ -98,6 +99,9 @@ export default function HeatmapView() {
   const focus = params.get('element');
   const [hovered, setHovered] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  // The area tool: a rectangle in reference px, kept in the URL; `drawing` while choosing one.
+  const area = parseArea(params.get('area'));
+  const [drawing, setDrawing] = useState(false);
 
   const filters = useFilters();
   const apiFilters = useApiFilters();
@@ -203,7 +207,40 @@ export default function HeatmapView() {
                   </Link>
                 </div>
               )}
-              <Heatmap pageUrl={data.page_url} layout={shownLayout} mode={mode} marks={marks} highlight={hovered} focus={focus} />
+              {area && (
+                <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-surface-2 px-3 py-2 text-sm">
+                  <span>
+                    Selected area: <span className="font-medium">{plural(countInArea(shownLayout.points, area), 'click')}</span>
+                    {shownLayout.points.length > 0 &&
+                      ` (${formatRate(countInArea(shownLayout.points, area) / shownLayout.points.length)} of the clicks drawn)`}
+                  </span>
+                  <Link
+                    href={hrefFor({ area: null })}
+                    scroll={false}
+                    className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                  >
+                    <X className="size-3.5" aria-hidden="true" />
+                    Clear area
+                  </Link>
+                </div>
+              )}
+              <Heatmap
+                pageUrl={data.page_url}
+                layout={shownLayout}
+                mode={mode}
+                marks={marks}
+                highlight={hovered}
+                focus={focus}
+                area={area}
+                onArea={
+                  drawing
+                    ? (next) => {
+                        setDrawing(false);
+                        router.replace(hrefFor({ area: next.w >= 4 && next.h >= 4 ? areaParam(next) : null }), { scroll: false });
+                      }
+                    : undefined
+                }
+              />
               <div className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-xs text-ink-3">
                 <p className="flex flex-wrap items-center gap-2">
                   {pageViews !== undefined && (
@@ -235,15 +272,30 @@ export default function HeatmapView() {
         <PageSelector
           pages={pages.data?.data ?? []}
           value={data?.page_url ?? page}
-          onChange={(pageUrl) => router.push(hrefFor({ page: pageUrl }), { scroll: false })}
+          // Another page or device has another layout: the element and area don't carry over.
+          onChange={(pageUrl) => router.push(hrefFor({ page: pageUrl, element: null, area: null }), { scroll: false })}
         />
         <ToggleGroup
           label="Device"
           options={deviceOptions}
           value={device}
-          hrefFor={(value) => hrefFor({ device: value === 'desktop' ? null : value })}
+          hrefFor={(value) => hrefFor({ device: value === 'desktop' ? null : value, element: null, area: null })}
         />
         <ToggleGroup label="Show" options={MODES} value={mode} hrefFor={(value) => hrefFor({ mode: value === 'dots' ? null : value })} />
+        <div className="flex flex-col gap-1.5 text-sm">
+          <span className="text-xs font-medium text-ink-3">Tools</span>
+          <button
+            type="button"
+            aria-pressed={drawing}
+            onClick={() => setDrawing(!drawing)}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm font-medium ${
+              drawing ? 'border-accent bg-accent text-white' : 'border-line text-ink-2 hover:bg-surface-2 hover:text-ink'
+            }`}
+          >
+            <SquareDashedMousePointer className="size-4" aria-hidden="true" />
+            {drawing ? 'Drag on the page…' : 'Select area'}
+          </button>
+        </div>
         <WatchPageButton pageUrl={data?.page_url ?? page} />
       </div>
       {deviceFiltered ? (
@@ -254,6 +306,7 @@ export default function HeatmapView() {
           {sidebarOpen ? (
             <ElementsSidebar
               data={ranking}
+              exportName={`trailmark-elements-${pathOf(ranking?.page_url ?? page).replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')}-${device}.csv`}
               focus={focus}
               focusHrefFor={(key) => hrefFor({ element: key })}
               onHover={setHovered}

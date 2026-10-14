@@ -2,6 +2,31 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-15 — v2 M4: heatmaps v2 (branch `v2`)
+Plan and decisions M4-D1–D5 in `docs/v2-plan.md` ("M4 in detail"). Display stays Dots / Grid
+and gains **Heat** (the spec names dots and grid, so both stay). Three local commits.
+- **M4a (`65a7d02`):** tracker click targets carry `selector` (from the nearest id, ≤ 5 steps:
+  tag, id, ≤ 2 classes, `:nth-of-type`; no text or attributes; > 256 chars left out) and `box`
+  (`{ x, y, w, h }` page px). `validateEvent` keeps both (bad box / long selector dropped).
+  `lib/elements.js`: element key = selector, else `#id`, else tag.classes "text" (JS and
+  aggregation versions agree). **`GET /api/elements`** (page, device, segment): top 50 by
+  clicks with share and sessions, names from the newest click (`$top`, MongoDB ≥ 5.2).
+  `GET /api/heatmap` clicks add `key` and `box`. Seed: selectors and boxes; `seed.test.js`
+  checks every selector against the demo pages with the real tracker (happy-dom). Brave:
+  recorded boxes equal the seed's measured LAYOUT. Server tests 276.
+- **M4b (`c981784`):** Heat view on a `<canvas>` (intensity blobs, stretched to the busiest
+  spot, blue → red palette); ranked-elements sidebar (Clarity-style cards: rank, name, selector,
+  clicks and share, sessions, copy selector, "Only this"); numbered badges for the top 10 on
+  every view (recorded box mapped like clicks, else the middle of the element's clicks); element
+  heatmap `?element=` with the box outlined; footer page views + clicks, Hot/Cold legend; sidebar
+  after the page under `lg` (fixed a 720 px overflow at 390). Lab specimens.
+- **M4c:** **Select area** (drag a rectangle; `?area=x,y,w,h`; strip with clicks and share of
+  the clicks drawn; cleared with page or device changes) and **CSV** export of the ranking
+  (built in the browser; formula-like cells neutralised). Brave check: drag → URL and count,
+  CSV downloaded with the right rows, no console errors (`scratch/area-check.mjs`).
+- Dashboard tests 130; build, lint, typecheck clean. README: tracker fields, `/api/elements`,
+  heatmap features and trade-offs.
+
 ## 2026-10-15 — v2 M3: insights — rage clicks, dead clicks, quick backs (branch `v2`)
 Plan and decisions M3-D1–D4 in `docs/v2-plan.md` ("M3 in detail"). Three local commits.
 - **M3a server (`15efca9`):** `lib/insights.js` (pure): rage = ≥ 3 consecutive clicks on one page,

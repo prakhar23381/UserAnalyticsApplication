@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  type Area,
+  areaFrom,
   binPoints,
+  countInArea,
   type ClickLayout,
   type ElementMark,
   GRID_CELL,
@@ -25,6 +28,10 @@ interface Props {
   highlight?: string | null;
   /** The element shown alone (element heatmap): its box is outlined. */
   focus?: string | null;
+  /** The selected area, outlined with its click count. */
+  area?: Area | null;
+  /** When set, dragging on the page draws a new area and hands it over. */
+  onArea?: (area: Area) => void;
 }
 
 /**
@@ -74,9 +81,11 @@ function HeatLayer({ width, height, points }: { width: number; height: number; p
  * to fit the container. The iframe is sandboxed (no scripts, no navigation)
  * and ignores the pointer; it is only a picture of the page.
  */
-export default function Heatmap({ pageUrl, layout, mode, marks = [], highlight = null, focus = null }: Props) {
+export default function Heatmap({ pageUrl, layout, mode, marks = [], highlight = null, focus = null, area = null, onArea }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  // The area being dragged: its first corner and the pointer, in reference px.
+  const [drag, setDrag] = useState<{ start: Point; end: Point } | null>(null);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -94,6 +103,31 @@ export default function Heatmap({ pageUrl, layout, mode, marks = [], highlight =
   const badge = scale > 0 ? 12 / scale : 12;
   const src = previewUrl(pageUrl);
   const focusBox = focus ? marks.find((mark) => mark.key === focus)?.box : null;
+  const shownArea = drag ? areaFrom(drag.start, drag.end, width, height) : area;
+  const areaClicks = shownArea ? countInArea(points, shownArea) : 0;
+
+  // From a pointer on the scaled drawing to reference px.
+  const toLayout = (event: PointerEvent<SVGSVGElement>): Point => {
+    const box = event.currentTarget.getBoundingClientRect();
+    return { x: ((event.clientX - box.left) * width) / box.width, y: ((event.clientY - box.top) * height) / box.height };
+  };
+  const drawing = onArea
+    ? {
+        onPointerDown: (event: PointerEvent<SVGSVGElement>) => {
+          event.currentTarget.setPointerCapture(event.pointerId);
+          const point = toLayout(event);
+          setDrag({ start: point, end: point });
+        },
+        onPointerMove: (event: PointerEvent<SVGSVGElement>) => {
+          if (drag) setDrag({ ...drag, end: toLayout(event) });
+        },
+        onPointerUp: () => {
+          if (drag) onArea(areaFrom(drag.start, drag.end, width, height));
+          setDrag(null);
+        },
+        onPointerCancel: () => setDrag(null),
+      }
+    : {};
 
   return (
     <div ref={containerRef} className="w-full">
@@ -122,7 +156,9 @@ export default function Heatmap({ pageUrl, layout, mode, marks = [], highlight =
               viewBox={`0 0 ${width} ${height}`}
               width={width}
               height={height}
-              className="absolute inset-0"
+              // select-none: dragging an area mustn't select the badges' numbers.
+              className={`absolute inset-0 select-none ${onArea ? 'cursor-crosshair touch-none' : ''}`}
+              {...drawing}
               role="img"
               aria-label={`${points.length} clicks${marks.length > 0 ? `; the top ${marks.length} elements are numbered` : ''}`}
             >
@@ -164,6 +200,28 @@ export default function Heatmap({ pageUrl, layout, mode, marks = [], highlight =
                   strokeWidth={2 / scale}
                   strokeDasharray={`${6 / scale} ${4 / scale}`}
                 />
+              )}
+              {shownArea && shownArea.w > 0 && shownArea.h > 0 && (
+                <g>
+                  <rect
+                    x={shownArea.x}
+                    y={shownArea.y}
+                    width={shownArea.w}
+                    height={shownArea.h}
+                    className="fill-blue-600/10 stroke-blue-700"
+                    strokeWidth={2 / scale}
+                    strokeDasharray={`${8 / scale} ${4 / scale}`}
+                  />
+                  <text
+                    x={shownArea.x + 6 / scale}
+                    y={shownArea.y + 6 / scale}
+                    dominantBaseline="hanging"
+                    className="fill-blue-900 font-semibold"
+                    style={{ fontSize: 13 / scale, paintOrder: 'stroke', stroke: 'white', strokeWidth: 3 / scale }}
+                  >
+                    {`${areaClicks} ${areaClicks === 1 ? 'click' : 'clicks'}`}
+                  </text>
+                </g>
               )}
               {marks.map((mark) => {
                 const active = mark.key === highlight || mark.key === focus;

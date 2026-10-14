@@ -162,7 +162,8 @@ Toolchain facts that are easy to get wrong:
 │                                 *.test.ts (Vitest)
 ├── scratch/                      git-ignored; browser-check.mjs, measure-layout.mjs, dashboard-check.mjs,
 │                                 iframe-debug.mjs, e2e-check.mjs (Phase 6; headless Brave over CDP),
-│                                 dead-click-check.mjs (M3b), shots/,
+│                                 dead-click-check.mjs (M3b), demo-selectors.mjs, element-check.mjs,
+│                                 area-check.mjs (M4), shots/,
 │                                 readme-check/ (fresh clone from the README check)
 └── .gitignore
 ```

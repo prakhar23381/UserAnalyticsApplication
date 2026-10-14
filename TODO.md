@@ -35,6 +35,5 @@ Plan and decisions: `docs/v2-plan.md` (approved direction 2026-10-15). Work on t
 detailed plan and approval before code changes.**
 
 - [ ] **[S]** (needs the user's double confirmation) Re-seed the local DB (`npm run seed -- --reset`) so the dashboard shows the M3 insight scenarios; then retake the README screenshots
-- [ ] **[S] M4** Heatmaps v2 (plan: `docs/v2-plan.md`, "M4 in detail"): **M4a** selector + box, `/api/elements`, seed; **M4b** Heat view, ranked sidebar, badges, element heatmap; **M4c** area tool, CSV export
 - [ ] **[S] M5** Engagement: page-view id, end-of-visit summary, scroll heatmap, attention map, excessive scrolling
 - [ ] **[S] M6** Custom tags (`window.trailmark.tag`), session labels, comparing two segments, privacy opt-outs (`data-cf-ignore`, `data-strip-query`), single-page-app page views

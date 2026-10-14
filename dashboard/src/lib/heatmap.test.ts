@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  areaFrom,
+  areaParam,
   binPoints,
+  countInArea,
   elementLabel,
+  elementsCsv,
   elementMarks,
   heatAlpha,
   heatColor,
   heatPalette,
   layoutClicks,
+  parseArea,
   placeBox,
   placeClick,
   previewUrl,
@@ -296,5 +301,36 @@ describe('elementLabel', () => {
 
   it('shortens long text', () => {
     expect(elementLabel({ ...base, text: 'x'.repeat(60) }).name).toBe(`${'x'.repeat(39)}…`);
+  });
+});
+
+describe('area tool', () => {
+  it('makes a rectangle from a drag in any direction, kept on the canvas', () => {
+    expect(areaFrom({ x: 300, y: 400 }, { x: 100.4, y: 150.6 }, 1280, 1000)).toEqual({ x: 100, y: 151, w: 200, h: 249 });
+    expect(areaFrom({ x: -50, y: 900 }, { x: 1400, y: 1200 }, 1280, 1000)).toEqual({ x: 0, y: 900, w: 1280, h: 100 });
+  });
+
+  it('round-trips through the URL, refusing malformed or tiny areas', () => {
+    const area = { x: 100, y: 151, w: 200, h: 249 };
+    expect(parseArea(areaParam(area))).toEqual(area);
+    for (const bad of [null, '', '1,2,3', '1,2,3,x', '-1,2,30,40', '1,2,3,40', '1.5,2,30,40']) expect(parseArea(bad)).toBeNull();
+  });
+
+  it('counts the points inside, edges included', () => {
+    const points = [{ x: 100, y: 100 }, { x: 150, y: 120 }, { x: 200, y: 200 }, { x: 201, y: 150 }];
+    expect(countInArea(points, { x: 100, y: 100, w: 100, h: 100 })).toBe(3);
+  });
+});
+
+describe('elementsCsv', () => {
+  const element = { rank: 1, key: '#buy', selector: '#buy', tag: 'button', id: 'buy', classes: null, text: 'Add to cart', clicks: 9, share: 0.1875, sessions: 7 };
+
+  it('writes a header and one row per element', () => {
+    expect(elementsCsv([element])).toBe('rank,element,selector,clicks,share,sessions\r\n1,Add to cart,#buy,9,0.1875,7\r\n');
+  });
+
+  it('quotes commas and quotes, and neutralises formulas', () => {
+    const csv = elementsCsv([{ ...element, text: 'Buy, "now"', selector: null, key: '=HYPERLINK("x")' }]);
+    expect(csv.split('\r\n')[1]).toBe(`1,"Buy, ""now""","'=HYPERLINK(""x"")",9,0.1875,7`);
   });
 });

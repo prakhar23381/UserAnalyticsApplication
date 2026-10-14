@@ -66,7 +66,10 @@ dots, a 40 px grid, or Heat (a cold-to-hot gradient on a `<canvas>`, stretched
 so the busiest spot is the hottest). A sidebar ranks the page's elements by
 clicks for the segment and device, and the top 10 carry the same numbered
 badge on the page. Each element can be shown alone (its clicks only, its box
-outlined), and its selector copied. The footer gives page views and clicks.
+outlined), and its selector copied; **CSV** downloads the ranking. **Select
+area** lets you drag a rectangle over the page to count the clicks inside it
+(kept in the URL, so the view can be shared). The footer gives page views and
+clicks.
 
 ![Click heatmap](docs/images/heatmap.png)
 

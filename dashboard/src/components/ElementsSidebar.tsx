@@ -1,11 +1,21 @@
 'use client';
 
-import { Check, ChevronsLeft, Copy, Crosshair, X } from 'lucide-react';
+import { Check, ChevronsLeft, Copy, Crosshair, Download, X } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
-import { BADGE_COUNT, elementLabel } from '@/lib/heatmap';
+import { BADGE_COUNT, elementLabel, elementsCsv } from '@/lib/heatmap';
 import { formatRate } from '@/lib/overview';
 import type { ElementsResponse, RankedElement } from '@/lib/types';
+
+/** Saves the ranking as a CSV file, built in the browser. */
+function downloadCsv(data: ElementsResponse, fileName: string) {
+  const url = URL.createObjectURL(new Blob([elementsCsv(data.elements)], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 /** Copies the element's selector; says so for a moment. */
 function CopyButton({ text, label }: { text: string; label: string }) {
@@ -102,12 +112,14 @@ function ElementCard({
  */
 export default function ElementsSidebar({
   data,
+  exportName,
   focus,
   focusHrefFor,
   onHover,
   onCollapse,
 }: {
   data: ElementsResponse | undefined;
+  exportName: string;
   focus: string | null;
   focusHrefFor: (key: string | null) => string;
   onHover: (key: string | null) => void;
@@ -122,15 +134,27 @@ export default function ElementsSidebar({
             {data ? `${data.total_elements.toLocaleString('en')} ${data.total_elements === 1 ? 'element' : 'elements'}` : '…'}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onCollapse}
-          className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-ink-3 hover:bg-surface hover:text-ink"
-        >
-          <ChevronsLeft className="size-4" aria-hidden="true" />
-          Hide
-          <span className="sr-only"> the ranking</span>
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            disabled={!data || data.elements.length === 0}
+            onClick={() => data && downloadCsv(data, exportName)}
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-ink-3 hover:bg-surface hover:text-ink disabled:opacity-50"
+          >
+            <Download className="size-4" aria-hidden="true" />
+            CSV
+            <span className="sr-only"> export of the ranking</span>
+          </button>
+          <button
+            type="button"
+            onClick={onCollapse}
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-ink-3 hover:bg-surface hover:text-ink"
+          >
+            <ChevronsLeft className="size-4" aria-hidden="true" />
+            Hide
+            <span className="sr-only"> the ranking</span>
+          </button>
+        </div>
       </div>
       {data && data.elements.length === 0 && <p className="text-sm text-ink-3">No clicks to rank on this page yet.</p>}
       <ol className="space-y-2">

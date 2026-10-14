@@ -1,15 +1,8 @@
 import useSWR, { type SWRConfiguration } from 'swr';
+import { API_URL } from './config';
 import type { ApiErrorBody, Device } from './types';
 
-const configuredUrl = process.env.NEXT_PUBLIC_API_URL;
-if (!configuredUrl) {
-  throw new Error('Missing NEXT_PUBLIC_API_URL (see dashboard/.env.local.example)');
-}
-
-/** Base URL of the API. Inlined at build time, so changing it needs a rebuild. */
-export const API_URL = configuredUrl.replace(/\/+$/, '');
-
-export const DEMO_URL = `${API_URL}/demo/`;
+export { API_URL, DEMO_URL } from './config';
 
 /** How often every view re-fetches, so new events show up without a reload. */
 export const POLL_MS = 5000;

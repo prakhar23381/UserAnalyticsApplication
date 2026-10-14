@@ -39,7 +39,7 @@ export default function Heatmap({ pageUrl, layout, mode }: Props) {
     <div ref={containerRef} className="w-full">
       {scale > 0 && (
         <div
-          className="mx-auto overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-800"
+          className="mx-auto overflow-hidden rounded-lg border border-line bg-surface-2"
           style={{ width: width * scale, height: height * scale }}
         >
           <div className="relative origin-top-left" style={{ width, height, transform: `scale(${scale})` }}>

@@ -1,5 +1,6 @@
 'use client';
 
+import { FileText } from 'lucide-react';
 import { pathOf } from '@/lib/format';
 import type { PageSummary } from '@/lib/types';
 
@@ -25,12 +26,15 @@ export default function PageSelector({ pages, value, onChange }: Props) {
   const showHost = new Set(options.map((page) => hostOf(page.page_url))).size > 1;
 
   return (
-    <label className="flex w-full min-w-0 flex-col gap-1 text-sm sm:w-auto sm:min-w-72 sm:flex-1">
-      <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Page</span>
+    <label className="flex w-full min-w-0 flex-col gap-1.5 text-sm sm:w-auto sm:min-w-72 sm:flex-1">
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-3">
+        <FileText className="size-3.5" aria-hidden="true" />
+        Page
+      </span>
       <select
         value={value ?? ''}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 font-mono text-sm dark:border-neutral-800 dark:bg-neutral-900"
+        className="w-full rounded-lg border border-line bg-surface px-3 py-2 font-mono text-sm shadow-xs"
       >
         {options.map((page) => (
           <option key={page.page_url} value={page.page_url}>

@@ -1,6 +1,6 @@
 /*!
- * CausalFunnel tracker: records page views and clicks and sends them to the
- * CausalFunnel API. Zero dependencies, no build step.
+ * Trailmark tracker: records page views and clicks and sends them to the
+ * Trailmark API. Zero dependencies, no build step.
  *
  * Embed it on every page (in <head> with defer, or before </body>):
  *

@@ -2,6 +2,35 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-15 — v2 M1a: Trailmark look, one-page layout, UI lab (branch `v2`)
+- **Pushed `main` first** (user asked): `da87007` and `8577f33` → `origin/main` = `8577f33`,
+  the submitted version. All v2 work is on the local branch `v2`; the plan is
+  `docs/v2-plan.md` (`2939c8d`).
+- **Brand:** Trailmark name, logo mark (dotted trail into a ring), favicon (`#4f39f6`, the
+  brand-600 oklch converted to hex), titles, README title and intro, tracker and demo-page
+  comments. The demo footer sentence is unchanged on purpose: it's accurate, and changing its
+  length could rewrap the phone layout under the seed's measured positions.
+- **Design system** (`globals.css`): brand scale (Tailwind indigo values, `@theme static`),
+  role tokens (canvas, surface, surface-2, line, ink 1–3, accent) for light and dark; dark
+  mode via `data-theme` set before paint (`?theme=` forces it); Inter through `next/font`.
+- **Icons:** `lucide-react` 1.49.0 (newest release older than two weeks; lockfile pinned),
+  always with a text label: device labels, tabs, toggles, states, pagination.
+- **One page** (`/`): top bar, tabs (Overview · Sessions · Heatmaps) in `?tab=`; journeys
+  open inside the Sessions tab (`?session=`); the list page is `?p=`. `lib/url.ts` (+11
+  tests) builds the URLs; `/sessions`, `/sessions/[id]` and `/heatmap` redirect (307) with
+  their parameters. Overview is a placeholder until M1b.
+- **UI lab** at `/lab` (user request): Screens (the real dashboard in frames at 1280 / 768 /
+  390, light and dark, zoom, extra query), Components (each piece in its states with sample
+  data), Tokens. `next start` on the production build returns 404 for it.
+- **Bugs found and fixed on the way:** every page returned 500 because the server-component
+  `TopBar` imported `lib/api.ts`, which imports SWR (no default export on the server): the
+  constants moved to `lib/config.ts`. The lab logged a hydration mismatch (locale date format,
+  server vs browser): its sample components render in the browser only
+  (`useSyncExternalStore`).
+- Checks: `npm test` 152, `npm -w dashboard test` 68, typecheck, lint and build clean. Brave
+  screenshots (light, dark, phone 390 with no sideways overflow) show no console or network
+  errors.
+
 ## 2026-10-15 — Submission checks, Akshara review, TODO reset
 - **Requirements audit** against `docs/assignment.md`, on the live site: every
   item met (tracker events and fields, the 4 APIs, MongoDB, sessions view and

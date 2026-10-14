@@ -1,7 +1,7 @@
-# CausalFunnel: User Analytics
+# Trailmark: user analytics
 
-A small full-stack analytics app, built as the take-home for CausalFunnel's
-Full Stack Engineer role. A dependency-free script (`tracker.js`) records
+Trailmark is a small full-stack analytics app, built as the take-home for
+CausalFunnel's Full Stack Engineer role. A dependency-free script (`tracker.js`) records
 `page_view` and `click` events on any web page and sends them to a Node/Express
 API, which validates them and stores them in MongoDB. A Next.js dashboard lists
 the sessions, replays each one as an ordered user journey, and draws a
@@ -186,6 +186,21 @@ The server tests need no running MongoDB: each run starts one in-memory
 `mongod`, with a separate database per test file. The tracker tests load the
 real `public/tracker.js` through a `<script src>` tag in happy-dom. They check,
 among other things, that every event it sends passes the API's validator.
+
+### UI lab
+
+With `npm run dev` running, open http://localhost:3000/lab to work on the
+dashboard before deploying it:
+
+- **Screens:** the real dashboard, with your local data, in frames at desktop,
+  tablet and phone width, in light and dark, side by side. Pick the tab, add a
+  query (such as `session=…`) and zoom.
+- **Components:** each building block in its states (loading, empty, error,
+  filled) with sample data.
+- **Tokens:** the colours, brand scale and type from `globals.css`.
+
+The lab is for local work only: production builds return 404 for `/lab`. Any
+page also takes `?theme=light` or `?theme=dark` to force a theme.
 
 ## Deployment
 
@@ -645,7 +660,7 @@ scale. See the trade-offs below.
 └── dashboard/                  Next.js 16 (App Router, TypeScript, Tailwind 4, SWR)
     ├── vercel.json             install command for Vercel
     └── src/
-        ├── app/                /sessions, /sessions/[id], /heatmap
+        ├── app/                / (Overview · Sessions · Heatmaps tabs), /lab (local only); old routes redirect
         ├── components/         tables, journey timeline, heatmap canvas, states
         └── lib/                API client, types, heatmap math, formatting, with unit tests
 ```

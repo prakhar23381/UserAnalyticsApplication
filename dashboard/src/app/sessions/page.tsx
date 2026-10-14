@@ -1,21 +1,8 @@
-import type { Metadata } from 'next';
-import { Suspense } from 'react';
-import PageHeading from '@/components/PageHeading';
-import SessionsTable from '@/components/SessionsTable';
-import { LoadingState } from '@/components/States';
+import { redirect } from 'next/navigation';
+import { legacyHref } from '@/lib/url';
 
-export const metadata: Metadata = { title: 'Sessions' };
-
-export default function SessionsPage() {
-  return (
-    <>
-      <PageHeading title="Sessions">
-        Every visit the tracker recorded, most recent activity first. Open one to see its journey.
-      </PageHeading>
-      {/* SessionsTable reads ?page= on the client, which needs a Suspense boundary. */}
-      <Suspense fallback={<LoadingState rows={8} />}>
-        <SessionsTable />
-      </Suspense>
-    </>
-  );
+// The pre-v2 sessions list; links to it keep working.
+export default async function LegacySessions({ searchParams }: PageProps<'/sessions'>) {
+  const { page } = await searchParams;
+  redirect(legacyHref('/sessions', new URLSearchParams(typeof page === 'string' ? { page } : {})));
 }

@@ -1,13 +1,8 @@
-import type { Metadata } from 'next';
-import SessionJourney from '@/components/SessionJourney';
-import { shortId } from '@/lib/format';
+import { redirect } from 'next/navigation';
+import { legacyHref } from '@/lib/url';
 
-export async function generateMetadata({ params }: PageProps<'/sessions/[id]'>): Promise<Metadata> {
+// The pre-v2 journey page; links to it keep working.
+export default async function LegacySession({ params }: PageProps<'/sessions/[id]'>) {
   const { id } = await params;
-  return { title: `Session ${shortId(id)}` };
-}
-
-export default async function SessionPage({ params }: PageProps<'/sessions/[id]'>) {
-  const { id } = await params;
-  return <SessionJourney id={id} />;
+  redirect(legacyHref(`/sessions/${encodeURIComponent(id)}`, new URLSearchParams()));
 }

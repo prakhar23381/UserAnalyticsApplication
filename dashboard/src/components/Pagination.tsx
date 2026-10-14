@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface Props {
@@ -7,39 +8,47 @@ interface Props {
   hrefFor: (page: number) => string;
 }
 
-const linkClass =
-  'rounded-md border border-neutral-200 bg-white px-3 py-1.5 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800';
-const disabledClass =
-  'rounded-md border border-neutral-200 px-3 py-1.5 text-neutral-400 dark:border-neutral-800 dark:text-neutral-600';
+const base = 'inline-flex items-center gap-1 rounded-lg border border-line px-3 py-1.5 font-medium';
+const linkClass = `${base} bg-surface text-ink-2 shadow-xs hover:bg-surface-2 hover:text-ink`;
+const disabledClass = `${base} cursor-not-allowed text-ink-3 opacity-50`;
 
 export default function Pagination({ page, limit, total, hrefFor }: Props) {
   const lastPage = Math.max(1, Math.ceil(total / limit));
   const first = Math.min((page - 1) * limit + 1, total);
   const last = Math.min(page * limit, total);
+  const previous = (
+    <>
+      <ChevronLeft className="size-4" aria-hidden="true" /> Previous
+    </>
+  );
+  const next = (
+    <>
+      Next <ChevronRight className="size-4" aria-hidden="true" />
+    </>
+  );
 
   return (
     <nav aria-label="Pagination" className="mt-4 flex items-center justify-between gap-4 text-sm">
-      <p className="text-neutral-500">
-        Showing <span className="tabular-nums">{first}–{last}</span> of{' '}
-        <span className="tabular-nums">{total}</span>
+      <p className="text-ink-3">
+        Showing <span className="tabular-nums">{first}–{last}</span> of <span className="tabular-nums">{total}</span>
       </p>
       <div className="flex gap-2">
         {page > 1 ? (
-          <Link href={hrefFor(Math.min(page - 1, lastPage))} className={linkClass}>
-            ← Previous
+          <Link href={hrefFor(Math.min(page - 1, lastPage))} scroll={false} className={linkClass}>
+            {previous}
           </Link>
         ) : (
           <span aria-disabled="true" className={disabledClass}>
-            ← Previous
+            {previous}
           </span>
         )}
         {page < lastPage ? (
-          <Link href={hrefFor(page + 1)} className={linkClass}>
-            Next →
+          <Link href={hrefFor(page + 1)} scroll={false} className={linkClass}>
+            {next}
           </Link>
         ) : (
           <span aria-disabled="true" className={disabledClass}>
-            Next →
+            {next}
           </span>
         )}
       </div>

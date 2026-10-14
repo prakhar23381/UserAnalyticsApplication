@@ -69,14 +69,16 @@ npm -w server run dev                 # API only (node --watch); also serves /tr
 npm -w server run seed -- --reset     # wipe + seed fake sessions — local DB only (§10)
 ```
 
-Local URLs: demo `http://localhost:4000/demo/` · dashboard `http://localhost:3000` · health `http://localhost:4000/health`.
+Local URLs: demo `http://localhost:4000/demo/` · dashboard `http://localhost:3000` · UI lab `http://localhost:3000/lab` (local only) · health `http://localhost:4000/health`.
 
 Toolchain facts that are easy to get wrong:
 - The root `npm test` runs the **server** suites only; the dashboard's tests are `npm -w dashboard test`. Run both for a change that touches both.
 - `typecheck` runs `next typegen` first: `next-env.d.ts` imports `.next/types/routes.d.ts`, and the global `PageProps` / `LayoutProps` helpers come from it, so a bare `tsc --noEmit` fails on a fresh clone.
 - `dashboard/next.config.ts` sets `agentRules: false`. Without it, `next dev` writes a `dashboard/AGENTS.md` whenever it detects a coding agent. This file stays the only rules file. Version-matched Next.js 16 docs are in `node_modules/next/dist/docs/`.
 - Tailwind 4 runs through the `@tailwindcss/turbopack` loader in `next.config.ts`, not PostCSS. A `next build --webpack` would ship without styles.
-- `dashboard/src/lib/api.ts` throws at import when `NEXT_PUBLIC_API_URL` is unset, so a build without it fails loudly instead of pointing at nothing.
+- `dashboard/src/lib/config.ts` throws at import when `NEXT_PUBLIC_API_URL` is unset, so a build without it fails loudly instead of pointing at nothing.
+- Server components must import `API_URL` / `DEMO_URL` from `lib/config.ts`, never `lib/api.ts`: that module imports SWR, which has no default export in a server component (every page 500s).
+- Dark mode follows `data-theme` on `<html>` (set before paint by the script in `layout.tsx`; `?theme=light|dark` forces it), not the media query. The brand scale is `@theme static` so every shade exists as a CSS variable.
 - There is no Python and no virtualenv. Flask is allowed by the spec, but this project doesn't use it.
 - Add dependencies with `npm i <pkg> -w server` or `-w dashboard` from `<root>`, never with `npm install` inside a workspace folder.
 - The server is ESM (`"type": "module"`), so relative imports need the `.js` extension.
@@ -136,13 +138,16 @@ Toolchain facts that are easy to get wrong:
 │   ├── .gitignore                ignores .env* but not .env*.example
 │   ├── .env.local.example        NEXT_PUBLIC_API_URL; .env.local is local only, git-ignored
 │   └── src/
-│       ├── app/                  layout.tsx (Nav), page.tsx (→ /sessions), icon.svg, globals.css,
-│       │                         sessions/page.tsx, sessions/[id]/page.tsx, heatmap/page.tsx
-│       ├── components/           Nav, PageHeading, States (loading/error/empty), RelativeTime,
-│       │                         SessionsTable, Pagination, SessionJourney, EventTimeline, EventBadge,
-│       │                         HeatmapView, PageSelector, Segmented, Heatmap
-│       └── lib/                  api.ts (useApi, URLs), types.ts, format.ts, journey.ts, heatmap.ts,
-│                                 *.test.ts (Vitest)
+│       ├── app/                  layout.tsx (TopBar, Inter, theme script), page.tsx (the one-page dashboard),
+│       │                         icon.svg, globals.css (tokens), lab/page.tsx (local only, 404 in production),
+│       │                         sessions/, sessions/[id]/, heatmap/ (redirects from the pre-v2 routes)
+│       ├── components/           TopBar, Logo, Tabs, Dashboard, OverviewTab, SessionsTab, SessionsTable,
+│       │                         SessionJourney, EventTimeline, EventBadge, HeatmapView, Heatmap, PageSelector,
+│       │                         ToggleGroup, DeviceLabel, Pagination, PageHeading, States, RelativeTime,
+│       │                         lab/ (Lab, ScreensSection, ComponentsSection, TokensSection, fixtures)
+│       └── lib/                  config.ts (API_URL, DEMO_URL; server-safe), api.ts (useApi, URLs), url.ts
+│                                 (query-string state), navigation.ts (useDashboardHref), types.ts, format.ts,
+│                                 journey.ts, heatmap.ts, *.test.ts (Vitest)
 ├── scratch/                      git-ignored; browser-check.mjs, measure-layout.mjs, dashboard-check.mjs,
 │                                 iframe-debug.mjs, e2e-check.mjs (Phase 6; headless Brave over CDP), shots/,
 │                                 readme-check/ (fresh clone from the README check)

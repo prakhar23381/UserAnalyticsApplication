@@ -1,33 +1,43 @@
 'use client';
 
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import DeviceLabel from '@/components/DeviceLabel';
 import EventTimeline from '@/components/EventTimeline';
 import PageHeading from '@/components/PageHeading';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { ApiError, sessionEventsUrl, useApi } from '@/lib/api';
 import { formatDateTime, formatDuration } from '@/lib/format';
 import { sourceOf } from '@/lib/journey';
-import type { SessionEvents } from '@/lib/types';
-
-const backLink = (
-  <Link href="/sessions" className="mb-4 inline-block text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100">
-    ← All sessions
-  </Link>
-);
+import { useDashboardHref } from '@/lib/navigation';
+import type { SessionEvents, TrackedEvent } from '@/lib/types';
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-neutral-500">{label}</dt>
-      <dd className="mt-0.5 font-medium">{children}</dd>
+    <div className="min-w-0">
+      <dt className="text-xs font-medium text-ink-3">{label}</dt>
+      <dd className="mt-1 truncate font-medium">{children}</dd>
     </div>
   );
 }
 
 export default function SessionJourney({ id }: { id: string }) {
+  const hrefFor = useDashboardHref();
   // Polls like the list, so a session still in progress grows on screen.
   const { data, error } = useApi<SessionEvents>(sessionEventsUrl(id));
+
+  const backLink = (
+    <Link
+      href={hrefFor({ session: null })}
+      scroll={false}
+      className="mb-4 inline-flex items-center gap-1.5 rounded-md text-sm font-medium text-ink-3 hover:text-ink"
+    >
+      <ArrowLeft className="size-4" aria-hidden="true" />
+      All sessions
+    </Link>
+  );
+  const heatmapHref = (event: TrackedEvent) => hrefFor({ tab: 'heatmaps', page: event.page_url, device: event.device });
 
   if (!data) {
     if (error instanceof ApiError && (error.status === 404 || error.status === 400)) {
@@ -60,20 +70,20 @@ export default function SessionJourney({ id }: { id: string }) {
         <span className="break-all font-mono">{data.session_id}</span>
       </PageHeading>
       {error && <ErrorState error={error} stale />}
-      <dl className="mb-6 grid grid-cols-2 gap-4 rounded-lg border border-neutral-200 bg-white p-4 text-sm sm:grid-cols-3 lg:grid-cols-6 dark:border-neutral-800 dark:bg-neutral-900">
+      <dl className="mb-6 grid grid-cols-2 gap-4 rounded-xl border border-line bg-surface p-4 text-sm shadow-xs sm:grid-cols-3 lg:grid-cols-6">
         <Fact label="Started">{formatDateTime(first.timestamp)}</Fact>
         <Fact label="Duration">{formatDuration(Date.parse(last.timestamp) - Date.parse(first.timestamp))}</Fact>
         <Fact label="Events">{events.length}</Fact>
         <Fact label="Pages">{pages}</Fact>
         <Fact label="Device">
-          <span className="capitalize">{first.device}</span>{' '}
-          <span className="font-normal text-neutral-500">
+          <DeviceLabel device={first.device} />{' '}
+          <span className="font-normal text-ink-3">
             {first.viewport_w}×{first.viewport_h}
           </span>
         </Fact>
         <Fact label="Source">{sourceOf(first)}</Fact>
       </dl>
-      <EventTimeline events={events} />
+      <EventTimeline events={events} heatmapHref={heatmapHref} />
     </>
   );
 }

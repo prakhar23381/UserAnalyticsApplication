@@ -1,6 +1,67 @@
 @import "tailwindcss";
 
-/* Native controls (select, scrollbars) follow the OS theme like the rest of the page. */
+/* Dark mode follows `data-theme` on <html>, set before paint by the script in
+   layout.tsx: the OS preference, unless the URL says `?theme=light|dark` (the
+   lab uses that to show both themes side by side). */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/* Brand: Tailwind's indigo, under its own name so a rebrand is these lines only. */
+@theme static {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-50: oklch(96.2% 0.018 272.314);
+  --color-brand-100: oklch(93% 0.034 272.788);
+  --color-brand-200: oklch(87% 0.065 274.039);
+  --color-brand-300: oklch(78.5% 0.115 274.713);
+  --color-brand-400: oklch(67.3% 0.182 276.935);
+  --color-brand-500: oklch(58.5% 0.233 277.117);
+  --color-brand-600: oklch(51.1% 0.262 276.966);
+  --color-brand-700: oklch(45.7% 0.24 277.023);
+  --color-brand-800: oklch(39.8% 0.195 277.366);
+  --color-brand-900: oklch(35.9% 0.144 278.697);
+  --color-brand-950: oklch(25.7% 0.09 281.288);
+}
+
+/* Colours by role, so components don't need a dark: variant for each:
+   canvas (page) → surface (cards) → surface-2 (headers, hover); line (borders);
+   ink → ink-2 → ink-3 (text, strongest to quietest); accent (links, active). */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
+  --canvas: oklch(98.4% 0.003 247.858);
+  --surface: oklch(100% 0 0);
+  --surface-2: oklch(96.8% 0.007 247.896);
+  --line: oklch(92.9% 0.013 255.508);
+  --ink: oklch(20.8% 0.042 265.755);
+  --ink-2: oklch(44.6% 0.043 257.281);
+  --ink-3: oklch(55.4% 0.046 257.417);
+  --accent: var(--color-brand-600);
+  --accent-soft: var(--color-brand-50);
+  --accent-ink: var(--color-brand-700);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --canvas: oklch(14.5% 0.012 264.5);
+  --surface: oklch(18.6% 0.016 264.5);
+  --surface-2: oklch(23% 0.018 264.5);
+  --line: oklch(28.5% 0.02 264.5);
+  --ink: oklch(96.8% 0.007 247.896);
+  --ink-2: oklch(80% 0.02 255);
+  --ink-3: oklch(65% 0.025 257);
+  --accent: var(--color-brand-400);
+  --accent-soft: oklch(30% 0.09 277);
+  --accent-ink: var(--color-brand-300);
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
 }

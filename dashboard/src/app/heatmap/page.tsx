@@ -1,21 +1,13 @@
-import type { Metadata } from 'next';
-import { Suspense } from 'react';
-import HeatmapView from '@/components/HeatmapView';
-import PageHeading from '@/components/PageHeading';
-import { LoadingState } from '@/components/States';
+import { redirect } from 'next/navigation';
+import { legacyHref } from '@/lib/url';
 
-export const metadata: Metadata = { title: 'Heatmap' };
-
-export default function HeatmapPage() {
-  return (
-    <>
-      <PageHeading title="Heatmap">
-        Where visitors click on a page, drawn over the live page at a fixed width for each device.
-      </PageHeading>
-      {/* HeatmapView reads ?page=, ?device= and ?mode= on the client, which needs a Suspense boundary. */}
-      <Suspense fallback={<LoadingState />}>
-        <HeatmapView />
-      </Suspense>
-    </>
-  );
+// The pre-v2 heatmap page; links to it (and their page/device/mode) keep working.
+export default async function LegacyHeatmap({ searchParams }: PageProps<'/heatmap'>) {
+  const query = await searchParams;
+  const params = new URLSearchParams();
+  for (const key of ['page', 'device', 'mode']) {
+    const value = query[key];
+    if (typeof value === 'string') params.set(key, value);
+  }
+  redirect(legacyHref('/heatmap', params));
 }

@@ -2,26 +2,34 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import DeviceLabel from '@/components/DeviceLabel';
 import Pagination from '@/components/Pagination';
 import RelativeTime from '@/components/RelativeTime';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { DEMO_URL, POLL_MS, sessionsUrl, useApi } from '@/lib/api';
 import { formatDuration, pathOf, shortId } from '@/lib/format';
+import { useDashboardHref } from '@/lib/navigation';
 import type { Paginated, SessionSummary } from '@/lib/types';
+import { parsePageNumber } from '@/lib/url';
 
-const pageHref = (page: number) => (page > 1 ? `/sessions?page=${page}` : '/sessions');
-
-function pageParam(value: string | null): number {
-  const page = Number.parseInt(value ?? '', 10);
-  return Number.isNaN(page) || page < 1 ? 1 : page;
-}
-
-const th = 'px-4 py-3 font-medium';
+const th = 'px-4 py-2.5 text-xs font-medium text-ink-3';
 const td = 'px-4 py-3';
+
+/** Live dot + polling note, shown above lists that refresh themselves. */
+export function LiveNote() {
+  return (
+    <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-2.5 py-1 text-xs text-ink-3">
+      <span className="size-2 animate-pulse rounded-full bg-emerald-500" aria-hidden="true" />
+      Live: refreshes every {POLL_MS / 1000} s
+    </p>
+  );
+}
 
 export default function SessionsTable() {
   const router = useRouter();
-  const page = pageParam(useSearchParams().get('page'));
+  const hrefFor = useDashboardHref();
+  const page = parsePageNumber(useSearchParams().get('p'));
+  const pageHref = (n: number) => hrefFor({ p: n > 1 ? n : null });
   // keepPreviousData: the current rows stay while the next page loads.
   const { data, error } = useApi<Paginated<SessionSummary>>(sessionsUrl(page), { keepPreviousData: true });
 
@@ -31,7 +39,7 @@ export default function SessionsTable() {
     return (
       <EmptyState title="No sessions yet">
         Open the{' '}
-        <a href={DEMO_URL} target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline dark:text-indigo-400">
+        <a href={DEMO_URL} target="_blank" rel="noopener noreferrer" className="font-medium text-accent underline">
           demo site
         </a>{' '}
         and click around. Sessions show up here within a few seconds.
@@ -42,7 +50,7 @@ export default function SessionsTable() {
   if (data.data.length === 0) {
     return (
       <EmptyState title={`There's no page ${data.page}`}>
-        <Link href={pageHref(1)} className="text-indigo-600 underline dark:text-indigo-400">
+        <Link href={pageHref(1)} className="font-medium text-accent underline">
           Go to the first page
         </Link>
       </EmptyState>
@@ -52,13 +60,10 @@ export default function SessionsTable() {
   return (
     <>
       {error && <ErrorState error={error} stale />}
-      <p className="mb-3 flex items-center gap-2 text-xs text-neutral-500">
-        <span className="size-2 animate-pulse rounded-full bg-emerald-500" aria-hidden="true" />
-        Live: refreshes every {POLL_MS / 1000} s
-      </p>
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+      <LiveNote />
+      <div className="overflow-x-auto rounded-xl border border-line bg-surface shadow-xs">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">
+          <thead className="border-b border-line bg-surface-2">
             <tr>
               <th scope="col" className={th}>Session</th>
               <th scope="col" className={`${th} text-right`}>Events</th>
@@ -70,32 +75,34 @@ export default function SessionsTable() {
               <th scope="col" className={`${th} hidden lg:table-cell`}>Entry page</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+          <tbody className="divide-y divide-line">
             {data.data.map((session) => {
-              const href = `/sessions/${encodeURIComponent(session.session_id)}`;
+              const href = hrefFor({ session: session.session_id });
               return (
                 <tr
                   key={session.session_id}
                   // The whole row opens the journey; the id stays a real link for keyboards and new tabs.
                   onClick={(event) => {
-                    if (!(event.target as HTMLElement).closest('a')) router.push(href);
+                    if (!(event.target as HTMLElement).closest('a')) router.push(href, { scroll: false });
                   }}
-                  className="cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
+                  className="cursor-pointer hover:bg-surface-2"
                 >
                   <td className={td}>
-                    <Link href={href} title={session.session_id} className="font-mono text-indigo-600 hover:underline dark:text-indigo-400">
+                    <Link href={href} scroll={false} title={session.session_id} className="font-mono font-medium text-accent hover:underline">
                       {shortId(session.session_id)}
                     </Link>
                   </td>
                   <td className={`${td} text-right tabular-nums`}>{session.event_count}</td>
-                  <td className={`${td} hidden text-right tabular-nums sm:table-cell`}>{session.page_views}</td>
-                  <td className={`${td} hidden text-right tabular-nums sm:table-cell`}>{session.clicks}</td>
-                  <td className={`${td} hidden capitalize md:table-cell`}>{session.device}</td>
-                  <td className={`${td} whitespace-nowrap`}>
+                  <td className={`${td} hidden text-right tabular-nums text-ink-2 sm:table-cell`}>{session.page_views}</td>
+                  <td className={`${td} hidden text-right tabular-nums text-ink-2 sm:table-cell`}>{session.clicks}</td>
+                  <td className={`${td} hidden md:table-cell`}>
+                    <DeviceLabel device={session.device} />
+                  </td>
+                  <td className={`${td} whitespace-nowrap text-ink-2`}>
                     <RelativeTime iso={session.first_seen} />
                   </td>
-                  <td className={`${td} hidden tabular-nums md:table-cell`}>{formatDuration(session.duration_ms)}</td>
-                  <td className={`${td} hidden max-w-56 truncate font-mono text-xs lg:table-cell`} title={session.entry_page}>
+                  <td className={`${td} hidden tabular-nums text-ink-2 md:table-cell`}>{formatDuration(session.duration_ms)}</td>
+                  <td className={`${td} hidden max-w-56 truncate font-mono text-xs text-ink-2 lg:table-cell`} title={session.entry_page}>
                     {pathOf(session.entry_page)}
                   </td>
                 </tr>

@@ -2,6 +2,32 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-15 — Submission checks, Akshara review, TODO reset
+- **Requirements audit** against `docs/assignment.md`, on the live site: every
+  item met (tracker events and fields, the 4 APIs, MongoDB, sessions view and
+  journey, heatmap page picker with dots/grid, hosting, public repo, README
+  with setup, stack and trade-offs). This closes the final-submission
+  checklist except the user's submit step: repo public (raw files load without
+  sign-in), no secrets in history (scanned), fresh-clone setup verified, tests
+  and lint clean, live links work, production seeded.
+- Pushed `3a71742` and `2c4d18f` (user-approved). `da87007` adds `*.env` to
+  `.gitignore` (local only): a root `atlas-credentials.env` wasn't covered by the
+  `.env` rules. An empty root `assignment.md` was deleted at the user's OK.
+- **Keep-alive:** the user chose an external monitor (UptimeRobot, 5 min) over
+  a GitHub Actions schedule. Render's free tier: 15 min idle → spin-down,
+  750 free instance hours a month, suspension rather than billing when hours
+  run out.
+- **Akshara embed** (user request, then skipped): a read-only review found it
+  wouldn't break the app (no `load` listeners, so `async` is safe), but the
+  tracker would publish a parent's PIN (PinPad uses digit `<button>`s) and
+  child ids from `/report?child=…` on the unauthenticated dashboard. Proposed
+  opt-outs (`data-cf-ignore`, `data-strip-query`) are now TODO items. Nothing
+  in the Akshara repo was changed.
+- `TODO.md` rewritten to outstanding work only: submission steps, items still
+  open from the build, and a planning section (Phase 9) for the user's new
+  features: top elements, element click heatmap, scroll heatmap, area heatmap,
+  attention map and a dashboard UI pass.
+
 ## 2026-10-14 — Phase 7: live and smoke-tested
 - **Atlas** (user): M0 `Cluster0` on AWS Singapore, a database user, database
   `causalfunnel`. A read-only ping from this Mac with the user's URI

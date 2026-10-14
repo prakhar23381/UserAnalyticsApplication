@@ -1,156 +1,100 @@
-# CausalFunnel Assignment — Build TODO
+# CausalFunnel — TODO
 
-Full Stack Engineer take-home: tracker script → Node API → MongoDB → Next.js dashboard.
-Spec: `docs/assignment.md`
+Tracker script → Node API → MongoDB → Next.js dashboard. Spec: `docs/assignment.md`.
+Built, deployed and seeded (2026-10-14); every spec requirement checked on the
+live site. Live links are at the top of `README.md`.
 
-Priority tags: **[M]** must (spec requirement) · **[S]** should (quality signal) · **[X]** stretch (only if time allows)
+Priority tags: **[M]** must (spec requirement) · **[S]** should · **[X]** stretch
 
 > **Outstanding work only** (CLAUDE.md §9). When an item is done, log it in `STATUS_LOG.md` and **delete** its line here. Don't tick it.
+> Decisions: `.agent_recovery_context.md` §4 · File structure: CLAUDE.md §3 · History: `STATUS_LOG.md`.
 
 ---
 
-## 0. Locked decisions
+## 1. Submission
 
-| Area | Choice | Why |
-|---|---|---|
-| Backend | Node 22+ · Express · ESM JavaScript | Spec heading says Node.js; one language across the stack. 22+ because Node 20 is EOL and `concurrently@10` needs 22 |
-| DB | MongoDB · Mongoose | Schema + validation + indexes declared in one place ("structured format") |
-| Dashboard | Next.js (App Router) · TypeScript · Tailwind · SWR | SWR gives polling for "live" updates with almost no code |
-| Tracker | Vanilla JS IIFE, zero deps | Must be droppable into any page |
-| Tests | Vitest · supertest · mongodb-memory-server | Real Mongo queries without a running DB |
-| Hosting | MongoDB Atlas (M0) · Render (server + demo + tracker) · Vercel (dashboard) | All free tiers |
-| Ports (local) | server `4000` · dashboard `3000` · mongo `27017` | |
-
-Key design rules (carry through every phase):
-- **Session** = localStorage id with **30-min inactivity timeout**.
-- **Page identity** = normalized URL (`origin + pathname`, no query/hash/trailing slash/`index.html`). Store raw URL too.
-- **Click coords** = `pageX/pageY` + `viewport_w/h` + `doc_w/h`; server derives `device` bucket; heatmap renders `x` as % of `doc_w`, filtered by device.
-- **Timestamps** = client `timestamp` + server `received_at`.
-
----
-
-## 1. Repo structure
-
-```
-CausalFunnel/
-├── README.md                    # ✅ exists (Phase 8)
-├── CLAUDE.md                    # agent rules ✅ exists
-├── .claude/agents/causalfunnel-engineer.md   # symlink → ../../CLAUDE.md ✅ exists
-├── TODO.md  STATUS_LOG.md  .agent_recovery_context.md   # bookkeeping ✅ exist
-├── package.json                 # npm workspaces: server, dashboard; `npm run dev` runs both ✅ exists
-├── docker-compose.yml           # mongo:7 ✅ exists
-├── .gitignore                   # ✅ exists
-├── docs/
-│   ├── assignment.md            # the spec ✅ exists
-│   └── images/                  # README screenshots ✅ exist
-├── server/                      # src/ + test/ ✅ exist (Phase 1)
-│   ├── package.json             # ✅ exists
-│   ├── .env.example             # ✅ exists
-│   ├── vitest.config.js         # ✅ exists
-│   ├── src/
-│   │   ├── index.js             # boot: connect DB → ensure indexes → listen
-│   │   ├── app.js               # builds & exports the express app (used by tests)
-│   │   ├── config.js            # reads/validates env
-│   │   ├── db.js                # mongoose connect/disconnect
-│   │   ├── models/
-│   │   │   └── Event.js
-│   │   ├── routes/
-│   │   │   ├── events.js        # POST /api/events
-│   │   │   ├── sessions.js      # GET /api/sessions, GET /api/sessions/:id/events
-│   │   │   ├── pages.js         # GET /api/pages
-│   │   │   └── heatmap.js       # GET /api/heatmap
-│   │   ├── lib/
-│   │   │   ├── normalizeUrl.js
-│   │   │   ├── device.js        # viewport_w → mobile | tablet | desktop
-│   │   │   └── validateEvent.js
-│   │   └── middleware/
-│   │       ├── cors.js
-│   │       └── errorHandler.js
-│   ├── public/
-│   │   ├── tracker.js           # THE tracking script (served at /tracker.js) ✅ exists
-│   │   └── demo/                # ✅ exists (+ demo.js)
-│   │       ├── index.html       # landing
-│   │       ├── products.html    # product grid, add-to-cart buttons
-│   │       ├── about.html       # long page (tests y-scroll)
-│   │       └── demo.css
-│   ├── scripts/
-│   │   └── seed.js              # fake sessions so the hosted dashboard isn't empty ✅ exists
-│   └── test/
-│       ├── globalSetup.js       # one in-memory mongod per run
-│       ├── setup.js             # a database per test file
-│       ├── factories.js         # stored-event builders
-│       └── {app,normalizeUrl,validateEvent,events,sessions,pages,heatmap,demo,tracker,seed}.test.js
-└── dashboard/                   # ✅ exists (Phase 4); file list in CLAUDE.md §3
-```
-
-> Tracker + demo live inside `server/public/` so one Render deploy serves API, tracker and demo — no copy/build step.
-
----
-
-## 3. Phase 1 — Server (Express + MongoDB)
-
-Done, including the rate limit on `POST /api/events` (see `STATUS_LOG.md`).
-
----
-
-## 4. Phase 2 — Tracker (`server/public/tracker.js`)
-
-Done except the stretch items below (see `STATUS_LOG.md`). Skipped for now by
-decision; list them in the README as next steps.
-
-- [ ] **[X]** Respect `navigator.doNotTrack === '1'` (deprecated; Safari dropped it)
-- [ ] **[X]** SPA support: patch `history.pushState` + listen to `popstate` → emit `page_view`
-- [ ] **[X]** Client `event_id` + unique index → idempotent ingestion on retries
-
----
-
-## 5. Phase 3 — Demo pages (`server/public/demo/`)
-
-Done, including the seed script and the products heading fix (see `STATUS_LOG.md`).
-
----
-
-## 6. Phase 4 — Dashboard (Next.js)
-
-Done (see `STATUS_LOG.md`).
-
----
-
-## 7. Phase 5 — Tests
-
-Server tests were written with Phase 1, dashboard unit tests for `src/lib/` with Phase 4 (see `STATUS_LOG.md`). New code adds its tests in the same change.
-
-- [ ] **[X]** Dashboard: one Playwright smoke test (sessions list renders, heatmap shows dots)
-
----
-
-## 8. Phase 6 — Local end-to-end check
-
-Done, including the phone/tablet `y` fix it found (see `STATUS_LOG.md`); rerun with `node scratch/e2e-check.mjs` (needs `npm run dev` and a fresh headless Brave profile).
-
----
-
-## 9. Phase 7 — Deploy
-
-Deployed, smoke-tested and seeded 2026-10-14 (see `STATUS_LOG.md`).
-
+- [ ] **[M]** (user) Submit the repo link and the live links
+- [ ] **[S]** (user) UptimeRobot monitor on `https://useranalytics-api.onrender.com/health` every 5 min (option a, chosen 2026-10-14). Keeps the free Render API awake: one service 24/7 uses ≤ 744 of the 750 free hours a month; don't run a second always-on free service in the same workspace
 - [ ] **[S]** (user, after submitting) Rotate the Atlas database user's password (it was pasted into the chat) and update `MONGODB_URI` on Render
+- [ ] **[S]** (agent, needs push approval) Push `da87007` (`*.env` in `.gitignore`). Not urgent: the ignore rule already protects the local `atlas-credentials.env`
 
 ---
 
-## 10. Phase 8 — README
+## 2. Open from the build
 
-Done, including the live links (see `STATUS_LOG.md`).
+- [ ] **[S]** Tracker opt-outs, found while reviewing an embed on another site (Akshara, 2026-10-15, skipped): needed before embedding on sites with PIN pads or ids in query strings
+  - `data-cf-ignore` on an element: clicks on or inside it aren't recorded at all (button text and tap positions would otherwise reveal a PIN)
+  - `data-strip-query` on the `<script>` tag: send page URLs and referrers without query or hash (the API's reads have no login, so ids in URLs are public)
+- [ ] **[X]** Tracker: SPA support (patch `history.pushState`, listen to `popstate` → `page_view`). Today, client-side route changes in React/Next sites aren't page views
+- [ ] **[X]** Tracker: client `event_id` + unique index → idempotent ingestion, so failed batches can be retried
+- [ ] **[X]** Tracker: respect `navigator.doNotTrack === '1'` (deprecated; Safari dropped it)
+- [ ] **[X]** Tests: one Playwright smoke test of the dashboard (sessions list renders, heatmap shows dots)
 
 ---
 
-## 11. Final submission checklist
+## 3. Phase 9 — Feature expansion (PLANNING)
 
-- [ ] Repo is **public**; no `.env` or secrets committed
-- [ ] Fresh clone → README steps work end to end
-- [ ] All [M] items above checked
-- [ ] Live links in README work (and server is awake)
-- [ ] Seeded data present in production
-- [ ] Tests pass; lint clean
-- [ ] Commit history is readable (one commit per phase/feature, not one giant commit)
-- [ ] Submit repo link + live links
+Requested 2026-10-15. **Nothing here is approved for implementation:** each
+item goes through Plan → Ask (CLAUDE.md §5) with its own decisions. Every new
+query must hit an index, and a new event type means updating the Mongoose enum,
+`validateEvent.js`, `EventBadge` and the README (CLAUDE.md §4).
+
+### Shared groundwork
+- **G1 Page-view id.** A client `page_view_id` on every event, so clicks, scroll
+  depth and attention can be tied to one page view. Also the base for `event_id`.
+- **G2 Page-exit summary event.** One event per page view, sent when the page is
+  hidden or unloaded, carrying max scroll depth and time per band. Decision: one
+  `engagement` type, or separate `scroll` and `attention` types. Mobile browsers
+  don't always fire `pagehide`, so send on `visibilitychange` and dedupe by G1.
+- **G3 Element identity.** The tracker records a stable selector (`target.selector`)
+  and the clicked element's box at click time (`target.box`: document x, y, w, h).
+  Existing clicks lack both, so element views cover new data only (the seed
+  regenerates).
+- **G4 Seed data.** Generate the new fields and events from the measured layout, so
+  production views aren't empty.
+
+### Features
+- [ ] **[S] 1. Top-ranked elements per page.** Elements ranked by clicks, with share of
+  the page's clicks and unique sessions, per page and device.
+  - API `GET /api/elements?page=&device=`: `$group` by element over the
+    `{page_url, type, device}` index
+  - Needs G3 for reliable identity; older clicks fall back to `tag#id.classes` + text
+  - Dashboard: a table beside the heatmap; selecting a row highlights that element's clicks
+- [ ] **[S] 2. Element click heatmap.** Outline each clicked element on the preview,
+  coloured and labelled by its click count.
+  - The preview is a cross-origin sandboxed iframe, so the dashboard can't read
+    element boxes from it; they come from G3's recorded boxes, mapped to the
+    reference width like clicks
+  - Replaces "element-relative heatmaps" in the README's next steps
+- [ ] **[S] 3. Scroll heatmap.** The share of page views that reached each depth,
+  drawn as bands over the preview, with the average fold line.
+  - Data: G2's max scroll depth (px, and % of `doc_h`) per page view
+  - API `GET /api/scroll?page=&device=` returns a depth histogram
+  - Pages shorter than the window count as 100%; fixed-viewport apps don't scroll
+- [ ] **[S] 4. Area heatmap.** Drag a rectangle on the heatmap to count the clicks
+  inside it and their share of the page.
+  - Dashboard only, on existing data: a helper in `lib/heatmap.ts` with unit tests;
+    no tracker or schema change. The smallest feature, and a good first step
+  - Decision: count the ≤ 5000 clicks already loaded, or ask the server for the
+    full total
+- [ ] **[S] 5. Attention map.** Where visitors spend time on the page.
+  - Tracker: while the tab is visible and the visitor is active, sample the visible
+    part of the page (e.g. every second) and add up milliseconds per 50 px band;
+    send the totals in G2's summary
+  - API: time per band, normalized per page view; dashboard: an intensity overlay
+  - Decisions: band size, idle rule (e.g. no input for 30 s), payload cap
+- [ ] **[S] 6. Dashboard UI improvements.** Scope with the user first. Candidates:
+  - an overview page: sessions, page views, clicks, average duration, top pages,
+    sessions over time
+  - filters (date range, device, traffic source) and session search
+  - one heatmap page with modes: Clicks · Elements · Scroll · Areas · Attention,
+    with a legend, opacity control and counts
+  - a consistent visual system (spacing, type scale, colour tokens), a better
+    phone layout, focus states and contrast
+  - Constraints (CLAUDE.md §3): no UI component library beyond Tailwind without
+    asking; charts mean either a new dependency or hand-made SVG (decision)
+
+**Suggested order:** 4 (no tracker change) → G3, 1, 2 → G1, G2, 3, 5 → the UI
+pass alongside. Each feature ships with tracker tests (happy-dom has no layout,
+so sizes must be stubbed), API tests, `lib/` unit tests, a seed update and README
+changes (data model, API reference, trade-offs).

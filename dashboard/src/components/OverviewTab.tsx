@@ -8,12 +8,15 @@ import DeviceSplit from '@/components/overview/DeviceSplit';
 import StatTile from '@/components/overview/StatTile';
 import TopPages from '@/components/overview/TopPages';
 import ValueBars from '@/components/overview/ValueBars';
+import Watchlist from '@/components/overview/Watchlist';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { overviewUrl, useApi } from '@/lib/api';
 import { countryName, RANGES } from '@/lib/filters';
 import { formatDuration } from '@/lib/format';
 import { useApiFilters, useDashboardHref, useFilters } from '@/lib/navigation';
 import { formatCount, formatRate, periodDelta } from '@/lib/overview';
+import { isWatched, toggleWatch } from '@/lib/segments';
+import { useWatchlist } from '@/lib/storage';
 import type { OverviewResponse } from '@/lib/types';
 
 // Recharts loads with this tab only, not with Sessions or Heatmaps.
@@ -40,12 +43,14 @@ export function OverviewContent({
   period,
   heatmapHref,
   filterHref,
+  watchPage,
 }: {
   data: OverviewResponse;
   period: string | null;
   heatmapHref: (pageUrl: string) => string;
   /** A link that narrows the segment to one value of a list filter. */
   filterHref: (param: 'browsers' | 'countries', value: string) => string;
+  watchPage?: { isWatched: (pageUrl: string) => boolean; toggle: (pageUrl: string) => void };
 }) {
   const { totals } = data;
   // Comparing with a period that had no sessions isn't meaningful (every rate would "change" from 0).
@@ -93,7 +98,7 @@ export function OverviewContent({
           </Card>
           <div className="grid gap-4 lg:grid-cols-2">
             <Card title="Top pages by page views" icon={FileText}>
-              <TopPages pages={data.top_pages} heatmapHref={heatmapHref} />
+              <TopPages pages={data.top_pages} heatmapHref={heatmapHref} watch={watchPage} />
             </Card>
             <Card title="Sessions by device" icon={MonitorSmartphone}>
               <DeviceSplit devices={data.devices} />
@@ -133,6 +138,11 @@ export default function OverviewTab() {
   // keepPreviousData: a new segment loads under the old picture, which dims instead of flashing.
   const { data, error, isLoading } = useApi<OverviewResponse>(overviewUrl(useApiFilters()), { keepPreviousData: true });
   const preset = RANGES.find((option) => option.value === range);
+  const [watchlist, setWatchlist] = useWatchlist();
+  const watchPage = {
+    isWatched: (page_url: string) => isWatched(watchlist, { kind: 'page', page_url }),
+    toggle: (page_url: string) => setWatchlist(toggleWatch(watchlist, { kind: 'page', page_url })),
+  };
 
   const heading = (
     <PageHeading title="Overview">Totals and trends for the sessions in the segment above.</PageHeading>
@@ -149,7 +159,11 @@ export default function OverviewTab() {
           period={preset?.previous ?? null}
           heatmapHref={(pageUrl) => hrefFor({ tab: 'heatmaps', page: pageUrl })}
           filterHref={(param, value) => hrefFor({ [param]: value, p: null })}
+          watchPage={watchPage}
         />
+      </div>
+      <div className="mt-4">
+        <Watchlist period={preset?.previous ?? null} />
       </div>
     </>
   );

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { DEVICE_META } from '@/components/DeviceLabel';
 import { FilterEditor, FilterMenu } from '@/components/FilterEditor';
 import Popover from '@/components/Popover';
+import SegmentMenu, { useDefaultSegmentOnce } from '@/components/SegmentMenu';
 import {
   ALL_DEVICES,
   activeFilters,
@@ -32,6 +33,7 @@ export default function FilterBar() {
   const filters = useFilters();
   const { range, devices } = filters;
   const go = (changes: Changes) => router.push(hrefFor({ ...changes, p: null }), { scroll: false });
+  useDefaultSegmentOnce();
 
   const active = activeFilters(filters);
   const rangeLabel = RANGES.find((r) => r.value === range)?.label ?? '';
@@ -43,9 +45,12 @@ export default function FilterBar() {
   return (
     <div className="space-y-2.5 py-3 text-sm">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-3">
-          <SlidersHorizontal className="size-4" aria-hidden="true" />
-          Segment
+        <span className="inline-flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-3">
+            <SlidersHorizontal className="size-4" aria-hidden="true" />
+            Segment
+          </span>
+          <SegmentMenu filters={filters} onChange={go} />
         </span>
 
         <label className="inline-flex items-center gap-2">

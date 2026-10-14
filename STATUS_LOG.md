@@ -2,6 +2,28 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-15 — v2 M2c: saved segments, default segment, watchlist (branch `v2`; closes M2)
+- **`lib/segments.ts`** (pure, 10 tests): a saved segment = name + its filters in a fixed order,
+  without the date range (M2-D4); apply (replaces every filter, keeps the date, resets the list
+  page), match, save/rename checks (name 1–40, unique, filters not already saved, ≤ 50), watchlist
+  toggles (≤ 20), and defensive parsing of everything read back from storage (queries re-cleaned).
+- **`lib/storage.ts`:** `useSyncExternalStore` over localStorage (`trailmark.segments`,
+  `trailmark.default_segment`, `trailmark.watchlist`); every access in try/catch with an in-memory
+  fallback for this tab; other tabs follow via the `storage` event.
+- **Segment menu** (start of the filter bar: "All visitors" / a segment's name / "Unsaved filters"):
+  pick a segment; save the current filters; for the current saved segment, Make default, Watch,
+  Rename, Delete (with confirmation; also clears its default and watchlist entry).
+- **Default segment:** applied once per page load when the URL carries no segment parameters (a
+  shared link's filters win; choosing "All visitors" afterwards sticks).
+- **My watchlist** (Overview): watched segments over the current date range (sessions, change,
+  sparkline; one overview request each, polled every 30 s) and watched pages in the current segment
+  (views, clicks, heatmap link). Watch pages from Top pages or the heatmap toolbar.
+- Lab: segment menu and watchlist specimens. README: segments, watchlist and the browser-storage
+  trade-off; screenshots retaken (overview with breakdowns and watchlist, sessions with a country
+  filter, journey with browser and country, heatmap). Dashboard tests 105; server 241; build,
+  lint, typecheck clean. Browser check: save → default → watch → reopen `/` applies the default;
+  "All visitors" sticks; page watched from heatmaps appears; phone width 390 in light mode.
+
 ## 2026-10-15 — v2 M2b: dashboard filters (branch `v2`)
 - **`lib/filters.ts`:** `FILTER_DEFS` (13 filters in 4 groups: list, single value, whole-number range),
   URL parameters named as the API's, cleaned on read (bad values dropped), passed through to every

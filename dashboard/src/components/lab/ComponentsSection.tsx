@@ -8,6 +8,8 @@ import { FilterEditor, FilterMenu } from '@/components/FilterEditor';
 import Heatmap from '@/components/Heatmap';
 import Logo, { LogoMark } from '@/components/Logo';
 import Pagination from '@/components/Pagination';
+import Watchlist from '@/components/overview/Watchlist';
+import SegmentMenu from '@/components/SegmentMenu';
 import { OverviewContent } from '@/components/OverviewTab';
 import { LiveNote } from '@/components/SessionsTable';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
@@ -109,6 +111,15 @@ export default function ComponentsSection() {
           ))}
         </div>
       </Specimen>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Specimen title="Segment menu" note="this browser's saved segments; choices do nothing here">
+          <SegmentMenu filters={labFilters} onChange={noop} />
+        </Specimen>
+        <Specimen title="My watchlist" note="this browser's watchlist, live numbers">
+          <Watchlist period="previous 30 days" />
+        </Specimen>
+      </div>
 
       <Specimen title="Overview" note="sample data: stat tiles with changes, sessions chart (hover it), top pages, devices">
         <OverviewContent data={LAB_OVERVIEW} period="previous 14 days" heatmapHref={() => '#'} filterHref={() => '#'} />

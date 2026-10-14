@@ -1,6 +1,6 @@
 'use client';
 
-import { CircleDot, Grid3x3 } from 'lucide-react';
+import { CircleDot, Eye, EyeOff, Grid3x3 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo } from 'react';
 import { DEVICE_META } from '@/components/DeviceLabel';
@@ -13,6 +13,8 @@ import { DEMO_URL, heatmapUrl, pagesUrl, useApi } from '@/lib/api';
 import { pathOf } from '@/lib/format';
 import { layoutClicks } from '@/lib/heatmap';
 import { useApiFilters, useDashboardHref, useFilters } from '@/lib/navigation';
+import { isWatched, toggleWatch } from '@/lib/segments';
+import { useWatchlist } from '@/lib/storage';
 import type { Device, HeatmapResponse, PagesResponse } from '@/lib/types';
 
 const DEVICES: ToggleOption<Device>[] = (['desktop', 'tablet', 'mobile'] as const).map((device) => ({
@@ -43,6 +45,24 @@ function Legend({ mode }: { mode: HeatmapMode }) {
       <span className="h-2.5 w-24 rounded-full bg-gradient-to-r from-red-600/15 to-red-600/75" aria-hidden="true" />
       More clicks per 40 px cell
     </span>
+  );
+}
+
+/** Adds the page to My watchlist on the Overview (stored in this browser). */
+function WatchPageButton({ pageUrl }: { pageUrl: string }) {
+  const [watchlist, setWatchlist] = useWatchlist();
+  const item = { kind: 'page', page_url: pageUrl } as const;
+  const watched = isWatched(watchlist, item);
+  return (
+    <button
+      type="button"
+      aria-pressed={watched}
+      onClick={() => setWatchlist(toggleWatch(watchlist, item))}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-sm font-medium text-ink-2 hover:bg-surface-2 hover:text-ink sm:ml-auto"
+    >
+      {watched ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
+      {watched ? 'Unwatch page' : 'Watch page'}
+    </button>
   );
 }
 
@@ -156,6 +176,7 @@ export default function HeatmapView() {
           hrefFor={(value) => hrefFor({ device: value === 'desktop' ? null : value })}
         />
         <ToggleGroup label="Show" options={MODES} value={mode} hrefFor={(value) => hrefFor({ mode: value === 'dots' ? null : value })} />
+        <WatchPageButton pageUrl={data?.page_url ?? page} />
       </div>
       {stage}
     </>

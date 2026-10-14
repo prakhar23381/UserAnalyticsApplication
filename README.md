@@ -36,10 +36,14 @@ The dashboard is one page: a filter bar on top, then three tabs that it
 scopes. The filter bar is the segment: a date range, devices, and any of
 browser, OS, country, referrer, UTM tags, entry, exit or visited page, session
 duration, pages and clicks. Each filter shows as a chip that opens its editor.
+A set of filters can be saved as a named segment, one segment can be the
+default (applied when the dashboard opens without filters), and segments and
+pages can be watched: **My watchlist** on the Overview follows them with live
+numbers. Saved segments and the watchlist stay in the viewer's browser.
 
 **Overview.** Headline numbers with the change from the previous period,
-sessions per day, top pages, and the split by device, browser, country and
-traffic source.
+sessions per day, top pages, the split by device, browser, country and
+traffic source, and My watchlist.
 
 ![Overview](docs/images/overview.png)
 
@@ -765,6 +769,14 @@ collection, the API then builds it from the events.
 - Data is fetched in the browser, never in server components. The server
   renders only the page shell, so a sleeping API shows a "waking up" note
   instead of a blank page that hangs.
+- Saved segments, the default segment and the watchlist are kept in the
+  viewer's `localStorage`, not on the server: storing them per person would
+  need accounts, and authentication is out of scope. They don't follow a
+  viewer to another browser, and in a private window they last only as long
+  as the tab. A segment stores its filters without the date range, so the
+  watchlist shows every segment over the same dates.
+- Every filter is in the URL, under the API's own parameter names, so any
+  view can be shared and the back button works.
 
 **Hosting and tooling**
 

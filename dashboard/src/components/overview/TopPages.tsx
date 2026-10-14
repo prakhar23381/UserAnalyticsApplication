@@ -1,4 +1,4 @@
-import { Flame } from 'lucide-react';
+import { Eye, EyeOff, Flame } from 'lucide-react';
 import Link from 'next/link';
 import { pathOf } from '@/lib/format';
 import type { OverviewResponse } from '@/lib/types';
@@ -10,9 +10,12 @@ import type { OverviewResponse } from '@/lib/types';
 export default function TopPages({
   pages,
   heatmapHref,
+  watch,
 }: {
   pages: OverviewResponse['top_pages'];
   heatmapHref: (pageUrl: string) => string;
+  /** Watching pages (the watchlist lives in the browser, so the lab leaves this out). */
+  watch?: { isWatched: (pageUrl: string) => boolean; toggle: (pageUrl: string) => void };
 }) {
   const max = Math.max(1, ...pages.map((page) => page.page_views));
   return (
@@ -32,6 +35,18 @@ export default function TopPages({
               <Flame className="size-3.5" aria-hidden="true" />
               Heatmap
             </Link>
+            {watch && (
+              <button
+                type="button"
+                onClick={() => watch.toggle(page.page_url)}
+                aria-pressed={watch.isWatched(page.page_url)}
+                className="inline-flex items-center gap-1 text-xs font-medium text-ink-3 hover:text-ink"
+              >
+                {watch.isWatched(page.page_url) ? <EyeOff className="size-3.5" aria-hidden="true" /> : <Eye className="size-3.5" aria-hidden="true" />}
+                {watch.isWatched(page.page_url) ? 'Unwatch' : 'Watch'}
+                <span className="sr-only"> {pathOf(page.page_url)}</span>
+              </button>
+            )}
           </div>
           <div className="mt-1.5 h-1.5 rounded-r bg-accent" style={{ width: `${(page.page_views / max) * 100}%` }} aria-hidden="true" />
         </li>

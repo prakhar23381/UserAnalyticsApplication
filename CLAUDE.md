@@ -146,15 +146,16 @@ Toolchain facts that are easy to get wrong:
 │       ├── app/                  layout.tsx (TopBar, Inter, theme script), page.tsx (the one-page dashboard),
 │       │                         icon.svg, globals.css (tokens), lab/page.tsx (local only, 404 in production),
 │       │                         sessions/, sessions/[id]/, heatmap/ (redirects from the pre-v2 routes)
-│       ├── components/           TopBar, Logo, FilterBar, FilterEditor (FilterMenu, FilterEditor), Popover, Tabs,
+│       ├── components/           TopBar, Logo, FilterBar, FilterEditor (FilterMenu, FilterEditor), SegmentMenu, Popover, Tabs,
 │       │                         Dashboard, OverviewTab (+ overview/: StatTile, SessionsChart (Recharts), DeviceSplit,
-│       │                         TopPages, ValueBars), SessionsTab, SessionsTable,
+│       │                         TopPages, ValueBars, Watchlist), SessionsTab, SessionsTable,
 │       │                         SessionJourney, EventTimeline, EventBadge, HeatmapView, Heatmap, PageSelector,
 │       │                         ToggleGroup, DeviceLabel, Pagination, PageHeading, States, RelativeTime,
 │       │                         lab/ (Lab, ScreensSection, ComponentsSection, TokensSection, fixtures)
 │       └── lib/                  config.ts (API_URL, DEMO_URL; server-safe), api.ts (useApi, URLs), url.ts
 │                                 (query-string state), filters.ts (segment: presets, FILTER_DEFS, labels, API params), navigation.ts
-│                                 (useDashboardHref, useFilters, useApiFilters), overview.ts (deltas, number
+│                                 (useDashboardHref, useFilters, useApiFilters), segments.ts (saved segments, watchlist;
+│                                 pure), storage.ts (localStorage hooks, guarded), overview.ts (deltas, number
 │                                 formats), types.ts, format.ts, journey.ts, heatmap.ts, *.test.ts (Vitest)
 ├── scratch/                      git-ignored; browser-check.mjs, measure-layout.mjs, dashboard-check.mjs,
 │                                 iframe-debug.mjs, e2e-check.mjs (Phase 6; headless Brave over CDP), shots/,

@@ -132,10 +132,8 @@ Done, including the phone/tablet `y` fix it found (see `STATUS_LOG.md`); rerun w
 
 ## 9. Phase 7 — Deploy
 
-Deployed and smoke-tested 2026-10-14 (see `STATUS_LOG.md`). Only seeding remains.
+Deployed, smoke-tested and seeded 2026-10-14 (see `STATUS_LOG.md`).
 
-- [ ] **[S]** (double confirmation, CLAUDE.md §10) Seed production once:
-  `MONGODB_URI='<atlas uri>' npm run seed -- --base-url https://useranalytics-api.onrender.com --allow-remote`
 - [ ] **[S]** (user, after submitting) Rotate the Atlas database user's password (it was pasted into the chat) and update `MONGODB_URI` on Render
 
 ---

@@ -28,7 +28,13 @@
   and the dot sits on "Shop now". After the previews the count was still
   1 session, 3 events, so preview visits aren't recorded. The demo footer's
   "View dashboard" link is visible and points at the Vercel dashboard.
-- Production is not seeded yet; the smoke-test visit is its only session.
+- **Seeded production** after the user confirmed twice ("seed production 50",
+  then "yes"): `npm run seed -- --sessions 50 --base-url
+  https://useranalytics-api.onrender.com --allow-remote`, with the URI passed
+  as an environment variable for that command only. It inserted 202 events and
+  deleted nothing. The live API then reported 52 sessions (50 seeded, the
+  smoke-test visit and one other real visit). The live Products heatmap
+  draws 54 desktop and 23 mobile dots, each on its element.
 
 ## 2026-10-14 — Phase 7: pushes and the Vercel dashboard
 - `0e0b415` `chore(deploy)`: `render.yaml` (Blueprint for `useranalytics-api`:

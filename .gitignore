@@ -10,6 +10,7 @@ coverage/
 .env
 .env.local
 .env.*.local
+*.env
 
 # agent diagnostics & scratch (CLAUDE.md §4)
 artifacts/

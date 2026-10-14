@@ -35,26 +35,29 @@ take up to a minute.
 The dashboard is one page: a filter bar on top, then three tabs that it
 scopes. The filter bar is the segment: a date range, devices, and any of
 browser, OS, country, referrer, UTM tags, entry, exit or visited page, session
-duration, pages and clicks. Each filter shows as a chip that opens its editor.
+duration, pages, clicks and [insights](#insights). Each filter shows as a chip that opens its editor.
 A set of filters can be saved as a named segment, one segment can be the
 default (applied when the dashboard opens without filters), and segments and
 pages can be watched: **My watchlist** on the Overview follows them with live
 numbers. Saved segments and the watchlist stay in the viewer's browser.
 
 **Overview.** Headline numbers with the change from the previous period,
-sessions per day, top pages, the split by device, browser, country and
-traffic source, and My watchlist.
+**Insights** cards (the share of sessions with rage clicks, dead clicks and
+quick backs, each opening the Sessions tab filtered to them), sessions per
+day, top pages, the split by device, browser, country and traffic source, and
+My watchlist.
 
 ![Overview](docs/images/overview.png)
 
-**Sessions.** Every session in the segment, with event counts, most recent
-activity first. The list refreshes every 5 seconds.
+**Sessions.** Every session in the segment, with event counts and insight
+chips, most recent activity first. The list refreshes every 5 seconds.
 
 ![Sessions list](docs/images/sessions.png)
 
 **User journey.** One session's events in order, grouped by page visit, opened
 inside the Sessions tab. The header shows the traffic source (`utm_source`,
-else the referrer).
+else the referrer) and the session's insights, and rage, dead and quick-back
+events are marked on the timeline.
 
 ![User journey](docs/images/journey.png)
 
@@ -209,7 +212,7 @@ Only the `*.example` files are committed.
 ```bash
 npm test                         # server: API tests (supertest + in-memory MongoDB) and tracker tests (happy-dom)
 npm test -- --project tracker    # one Vitest project only
-npm -w dashboard test            # dashboard: unit tests for the heatmap math, formatting and journey grouping
+npm -w dashboard test            # dashboard: unit tests for the heatmap math, filters, formatting, insights and journey grouping
 npm -w dashboard run typecheck   # next typegen && tsc --noEmit
 npm -w dashboard run lint
 npm -w dashboard run build
@@ -875,7 +878,7 @@ collection, the API then builds it from the events.
     ├── vercel.json             install command for Vercel
     └── src/
         ├── app/                / (Overview · Sessions · Heatmaps tabs), /lab (local only); old routes redirect
-        ├── components/         filter bar (popover, filter menu and editors), tabs, Overview (stat tiles, chart, top pages, devices, value bars), tables, journey timeline, heatmap canvas, states, lab/
+        ├── components/         filter bar (popover, filter menu and editors), tabs, Overview (stat tiles, insight cards, chart, top pages, devices, value bars), insight chips, tables, journey timeline, heatmap canvas, states, lab/
         └── lib/                API client, URL state, filters, overview maths, heatmap maths, formatting, with unit tests
 ```
 

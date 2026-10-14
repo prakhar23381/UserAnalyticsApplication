@@ -3,6 +3,7 @@
 // goes to the API as it is, plus `from` worked out from the date preset.
 // Pure, so it's unit-tested.
 import { formatDuration, pathOf } from './format';
+import { INSIGHT_INFO, isInsight } from './insights';
 import type { Device } from './types';
 
 export type RangePreset = '24h' | '7d' | '30d' | '90d' | 'all';
@@ -25,7 +26,7 @@ export const ALL_DEVICES: readonly Device[] = ['desktop', 'tablet', 'mobile'];
 
 // ---- The filters beyond date and device ----
 
-export type ListParam = 'browsers' | 'os' | 'countries' | 'referrers';
+export type ListParam = 'browsers' | 'os' | 'countries' | 'referrers' | 'insights';
 export type OneParam = 'utm_source' | 'utm_medium' | 'utm_campaign' | 'entry_page' | 'exit_page' | 'visited_page';
 export type NumberParam = 'min_duration' | 'max_duration' | 'min_pages' | 'max_pages' | 'min_clicks' | 'max_clicks';
 export type FilterParam = ListParam | OneParam | NumberParam;
@@ -41,7 +42,8 @@ export type OptionsKey =
   | 'utm_campaign'
   | 'entry_pages'
   | 'exit_pages'
-  | 'pages';
+  | 'pages'
+  | 'insights';
 
 export type FilterGroup = 'Visitors' | 'Acquisition' | 'Pages' | 'Engagement';
 
@@ -50,11 +52,12 @@ interface BaseDef {
   label: string;
   group: FilterGroup;
 }
-/** Several values, any of which matches (a comma-separated list). */
+/** Several values (a comma-separated list): any of them matches, or with `all`, a session needs every one. */
 export interface ListDef extends BaseDef {
   kind: 'list';
   param: ListParam;
   options: OptionsKey;
+  all?: true;
 }
 /** One exact value. */
 export interface OneDef extends BaseDef {
@@ -87,6 +90,7 @@ export const FILTER_DEFS: readonly FilterDef[] = [
   { id: 'duration', label: 'Session duration', group: 'Engagement', kind: 'range', min: 'min_duration', max: 'max_duration', unit: 'seconds' },
   { id: 'pages', label: 'Pages per session', group: 'Engagement', kind: 'range', min: 'min_pages', max: 'max_pages', unit: 'count' },
   { id: 'clicks', label: 'Clicks', group: 'Engagement', kind: 'range', min: 'min_clicks', max: 'max_clicks', unit: 'count' },
+  { id: 'insights', label: 'Insights', group: 'Engagement', kind: 'list', param: 'insights', options: 'insights', all: true },
 ];
 
 const defParams = (def: FilterDef): FilterParam[] => (def.kind === 'range' ? [def.min, def.max] : [def.param]);
@@ -203,6 +207,7 @@ export function optionLabel(options: OptionsKey, value: string): string {
   if (options === 'countries') return countryName(value);
   if (options === 'referrers' && value === 'direct') return 'Direct (no referrer)';
   if (options === 'entry_pages' || options === 'exit_pages' || options === 'pages') return pathOf(value);
+  if (options === 'insights' && isInsight(value)) return INSIGHT_INFO[value].label;
   return value;
 }
 
@@ -211,7 +216,9 @@ const formatBound = (def: RangeDef, value: string) =>
 
 /** What a chip says after the filter's name: "Chrome, Safari", "/demo/about.html", "10s – 2m 00s", "≥ 3". */
 export function filterSummary(def: FilterDef, filters: Filters): string {
-  if (def.kind === 'list') return listValues(filters, def.param).map((value) => optionLabel(def.options, value)).join(', ');
+  if (def.kind === 'list') {
+    return listValues(filters, def.param).map((value) => optionLabel(def.options, value)).join(def.all ? ' and ' : ', ');
+  }
   if (def.kind === 'one') return optionLabel(def.options, filters.params[def.param] ?? '');
   const min = filters.params[def.min];
   const max = filters.params[def.max];

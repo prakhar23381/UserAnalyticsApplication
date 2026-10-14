@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import DeviceLabel, { DEVICE_META } from '@/components/DeviceLabel';
 import EventBadge from '@/components/EventBadge';
 import EventTimeline from '@/components/EventTimeline';
+import InsightChip from '@/components/InsightChip';
 import { FilterEditor, FilterMenu } from '@/components/FilterEditor';
 import Heatmap from '@/components/Heatmap';
 import Logo, { LogoMark } from '@/components/Logo';
@@ -73,6 +74,17 @@ export default function ComponentsSection() {
           </div>
         </Specimen>
 
+        <Specimen title="Insight chips" note="On session rows and journey events. Icon and words, never colour alone.">
+          <div className="flex flex-wrap items-center gap-2">
+            <InsightChip insight="rage" />
+            <InsightChip insight="dead" />
+            <InsightChip insight="quick_back" />
+            <InsightChip insight="rage" count={1} />
+            <InsightChip insight="dead" count={4} />
+            <InsightChip insight="quick_back" count={2} />
+          </div>
+        </Specimen>
+
         <Specimen title="Live note and pagination">
           <LiveNote />
           <Pagination page={2} limit={20} total={52} hrefFor={() => '#'} />
@@ -122,11 +134,11 @@ export default function ComponentsSection() {
       </div>
 
       <Specimen title="Overview" note="sample data: stat tiles with changes, sessions chart (hover it), top pages, devices">
-        <OverviewContent data={LAB_OVERVIEW} period="previous 14 days" heatmapHref={() => '#'} filterHref={() => '#'} />
+        <OverviewContent data={LAB_OVERVIEW} period="previous 14 days" heatmapHref={() => '#'} filterHref={() => '#'} insightHref={() => '#'} />
       </Specimen>
 
       <Specimen title="Overview: no previous data" note="comparison hidden, with a note">
-        <OverviewContent data={{ ...LAB_OVERVIEW, previous: { ...LAB_OVERVIEW.previous!, sessions: 0 } }} period="previous 14 days" heatmapHref={() => '#'} filterHref={() => '#'} />
+        <OverviewContent data={{ ...LAB_OVERVIEW, previous: { ...LAB_OVERVIEW.previous!, sessions: 0 } }} period="previous 14 days" heatmapHref={() => '#'} filterHref={() => '#'} insightHref={() => '#'} />
       </Specimen>
 
       <Specimen title="Journey timeline" note="sample session">

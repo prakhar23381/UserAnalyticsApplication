@@ -1,10 +1,11 @@
 'use client';
 
-import { AppWindow, FileText, Globe, type LucideIcon, MonitorSmartphone, Signpost, TrendingUp } from 'lucide-react';
+import { AppWindow, FileText, Globe, type LucideIcon, MonitorSmartphone, Signpost, TrendingUp, TriangleAlert } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
 import PageHeading from '@/components/PageHeading';
 import DeviceSplit from '@/components/overview/DeviceSplit';
+import InsightCards from '@/components/overview/InsightCards';
 import StatTile from '@/components/overview/StatTile';
 import TopPages from '@/components/overview/TopPages';
 import ValueBars from '@/components/overview/ValueBars';
@@ -12,6 +13,7 @@ import Watchlist from '@/components/overview/Watchlist';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { overviewUrl, useApi } from '@/lib/api';
 import { countryName, RANGES } from '@/lib/filters';
+import type { Insight } from '@/lib/insights';
 import { formatDuration } from '@/lib/format';
 import { useApiFilters, useDashboardHref, useFilters } from '@/lib/navigation';
 import { formatCount, formatRate, periodDelta } from '@/lib/overview';
@@ -43,6 +45,7 @@ export function OverviewContent({
   period,
   heatmapHref,
   filterHref,
+  insightHref,
   watchPage,
 }: {
   data: OverviewResponse;
@@ -50,6 +53,8 @@ export function OverviewContent({
   heatmapHref: (pageUrl: string) => string;
   /** A link that narrows the segment to one value of a list filter. */
   filterHref: (param: 'browsers' | 'countries', value: string) => string;
+  /** The Sessions tab, narrowed to the sessions with one insight. */
+  insightHref: (insight: Insight) => string;
   watchPage?: { isWatched: (pageUrl: string) => boolean; toggle: (pageUrl: string) => void };
 }) {
   const { totals } = data;
@@ -93,6 +98,9 @@ export function OverviewContent({
         <EmptyState title="No sessions in this segment">Try a longer date range, more devices or fewer filters in the filter bar.</EmptyState>
       ) : (
         <>
+          <Card title="Insights" icon={TriangleAlert}>
+            <InsightCards totals={totals} previous={previous} period={period} sessionsHref={insightHref} />
+          </Card>
           <Card title="Sessions over time" icon={TrendingUp}>
             <SessionsChart series={data.series} />
           </Card>
@@ -159,6 +167,7 @@ export default function OverviewTab() {
           period={preset?.previous ?? null}
           heatmapHref={(pageUrl) => hrefFor({ tab: 'heatmaps', page: pageUrl })}
           filterHref={(param, value) => hrefFor({ [param]: value, p: null })}
+          insightHref={(insight) => hrefFor({ tab: 'sessions', insights: insight, p: null })}
           watchPage={watchPage}
         />
       </div>

@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation';
 import { DeltaText } from '@/components/overview/StatTile';
 import { overviewUrl, pagesUrl, useApi } from '@/lib/api';
 import { apiFilterParams, readFilters } from '@/lib/filters';
+import { INSIGHT_INFO, insightShare, INSIGHTS } from '@/lib/insights';
 import { pathOf } from '@/lib/format';
 import { useApiFilters, useDashboardHref, useFilters, useNow } from '@/lib/navigation';
-import { formatCount, periodDelta } from '@/lib/overview';
+import { formatCount, formatRate, periodDelta } from '@/lib/overview';
 import { applySegment, liveWatchItems, type SavedSegment, toggleWatch, type WatchItem } from '@/lib/segments';
 import { useSavedSegments, useWatchlist } from '@/lib/storage';
 import type { OverviewResponse, PagesResponse } from '@/lib/types';
@@ -61,6 +62,11 @@ function SegmentRow({ segment, period, onUnwatch }: { segment: SavedSegment; per
       </button>
       <span className="tabular-nums">{data ? `${formatCount(data.totals.sessions)} sessions` : '…'}</span>
       {delta && <DeltaText delta={delta} period={period ?? undefined} className="w-16" />}
+      {data && data.totals.sessions > 0 && (
+        <span className="text-xs tabular-nums text-ink-3">
+          {INSIGHTS.map((insight) => `${INSIGHT_INFO[insight].label} ${formatRate(insightShare(data.totals, insight).share)}`).join(' · ')}
+        </span>
+      )}
       <Sparkline values={data?.series.map((day) => day.sessions) ?? []} />
       <Unwatch label={segment.name} onClick={onUnwatch} />
     </li>

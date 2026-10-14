@@ -183,4 +183,11 @@ describe('labels', () => {
     expect(filterSummary(def('clicks'), set)).toBe('≥ 3');
     expect(filterSummary(def('pages'), set)).toBe('≤ 1');
   });
+
+  it('names insights, joined with "and" since a session needs all of them', () => {
+    expect(optionLabel('insights', 'quick_back')).toBe('Quick backs');
+    const set = filters({ params: { insights: 'rage,dead' } });
+    expect(filterSummary(def('insights'), set)).toBe('Rage clicks and Dead clicks');
+    expect(readFilters(new URLSearchParams('insights=rage,%20dead,rage')).params.insights).toBe('rage,dead');
+  });
 });

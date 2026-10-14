@@ -22,6 +22,9 @@ export interface TrackedEvent {
   x?: number; // clicks only: document coordinates in CSS px
   y?: number;
   target?: ClickTarget;
+  dead?: true; // clicks only: the page didn't react within 1 s (tracker)
+  rage?: true; // journey only: part of a rage-click burst
+  quick_back?: true; // journey only: a page view left again within 7 s
   viewport_w: number;
   viewport_h: number;
   doc_w: number;
@@ -45,6 +48,9 @@ export interface SessionSummary {
   event_count: number;
   page_views: number;
   clicks: number;
+  rage_clicks: number; // bursts (lib/insights.ts)
+  dead_clicks: number;
+  quick_backs: number;
   first_seen: string;
   last_seen: string;
   duration_ms: number;
@@ -106,6 +112,9 @@ export interface OverviewTotals {
   avg_duration_ms: number;
   pages_per_session: number;
   bounce_rate: number; // 0–1: share of sessions with at most one page view
+  rage_sessions: number; // sessions with at least one rage click
+  dead_sessions: number;
+  quick_back_sessions: number;
 }
 
 /** GET /api/overview */

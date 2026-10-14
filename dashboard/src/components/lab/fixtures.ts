@@ -20,6 +20,8 @@ export const LAB_EVENTS: TrackedEvent[] = [
   { ...base, _id: 'e1', type: 'page_view', page_url: HOME, raw_url: `${HOME}/?utm_source=newsletter`, timestamp: at(0), received_at: at(1), doc_h: 920, referrer: 'https://mail.example.com/' },
   { ...base, _id: 'e2', type: 'click', page_url: HOME, raw_url: `${HOME}/?utm_source=newsletter`, timestamp: at(7), received_at: at(8), doc_h: 920, x: 210, y: 416, target: { tag: 'a', id: 'cta-shop', classes: 'btn btn-primary', text: 'Shop now' } },
   { ...base, _id: 'e3', type: 'page_view', page_url: PRODUCTS, raw_url: PRODUCTS, timestamp: at(8), received_at: at(9), doc_h: 1144 },
+  // A visitor keeps clicking a product photo, which does nothing: rage and dead clicks.
+  ...[15, 15.3, 15.6].map((s, i): TrackedEvent => ({ ...base, _id: `e3${i}`, type: 'click', page_url: PRODUCTS, raw_url: PRODUCTS, timestamp: at(s), received_at: at(17), doc_h: 1144, x: 226 + i * 4, y: 708 - i * 3, target: { tag: 'div', classes: 'product-image tone-5' }, dead: true, rage: true })),
   { ...base, _id: 'e4', type: 'click', page_url: PRODUCTS, raw_url: PRODUCTS, timestamp: at(21), received_at: at(22), doc_h: 1144, x: 281, y: 943, target: { tag: 'button', id: 'add-espresso', classes: 'btn btn-primary add-to-cart', text: 'Add to cart' } },
   { ...base, _id: 'e5', type: 'click', page_url: PRODUCTS, raw_url: PRODUCTS, timestamp: at(30), received_at: at(31), doc_h: 1144, x: 1166, y: 32, target: { tag: 'a', id: 'cart-link', text: 'Cart 1' } },
 ];
@@ -35,8 +37,8 @@ export const LAB_CLICKS: HeatmapClick[] = [
 // Two weeks of sample traffic for the Overview, with a previous period to compare.
 export const LAB_OVERVIEW: OverviewResponse = {
   range: { from: '2026-10-01T00:00:00.000Z', to: '2026-10-15T00:00:00.000Z' },
-  totals: { sessions: 1284, page_views: 3410, clicks: 5120, avg_duration_ms: 94_000, pages_per_session: 2.66, bounce_rate: 0.381 },
-  previous: { sessions: 1102, page_views: 3020, clicks: 5310, avg_duration_ms: 88_000, pages_per_session: 2.74, bounce_rate: 0.402 },
+  totals: { sessions: 1284, page_views: 3410, clicks: 5120, avg_duration_ms: 94_000, pages_per_session: 2.66, bounce_rate: 0.381, rage_sessions: 96, dead_sessions: 231, quick_back_sessions: 142 },
+  previous: { sessions: 1102, page_views: 3020, clicks: 5310, avg_duration_ms: 88_000, pages_per_session: 2.74, bounce_rate: 0.402, rage_sessions: 71, dead_sessions: 240, quick_back_sessions: 118 },
   series: [62, 71, 80, 77, 95, 104, 88, 79, 92, 101, 110, 96, 113, 116].map((sessions, i) => ({
     date: `2026-10-${String(i + 1).padStart(2, '0')}`,
     sessions,

@@ -1,7 +1,9 @@
 import { Flame } from 'lucide-react';
 import Link from 'next/link';
 import EventBadge from '@/components/EventBadge';
+import InsightChip from '@/components/InsightChip';
 import { describeTarget, formatDateTime, formatOffset, pathOf } from '@/lib/format';
+import { eventInsights } from '@/lib/insights';
 import { groupByPageVisit, pageViewNote } from '@/lib/journey';
 import type { TrackedEvent } from '@/lib/types';
 
@@ -20,6 +22,9 @@ function EventRow({ event, start }: { event: TrackedEvent; start: number }) {
       <span className="min-w-0 flex-1 break-words font-mono text-xs text-ink-2 sm:truncate" title={detail}>
         {detail}
       </span>
+      {eventInsights(event).map((insight) => (
+        <InsightChip key={insight} insight={insight} />
+      ))}
       {event.type === 'click' && event.x !== undefined && event.y !== undefined && (
         <span className="hidden shrink-0 font-mono text-xs tabular-nums text-ink-3 sm:inline">
           ({Math.round(event.x)}, {Math.round(event.y)})

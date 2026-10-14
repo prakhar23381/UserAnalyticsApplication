@@ -2,6 +2,36 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-15 — v2 M3: insights — rage clicks, dead clicks, quick backs (branch `v2`)
+Plan and decisions M3-D1–D4 in `docs/v2-plan.md` ("M3 in detail"). Three local commits.
+- **M3a server (`15efca9`):** `lib/insights.js` (pure): rage = ≥ 3 consecutive clicks on one page,
+  each ≤ 700 ms after the last and within 30 px of the **first** (M3-D1), counted per burst; dead =
+  clicks stored with `dead: true`; quick back = A → B → A with < 7 s on B, counted per B. Session
+  summaries store `rage_clicks`, `dead_clicks`, `quick_backs`; `validateEvent` accepts a boolean
+  `dead` on clicks (stored only when true). `insights=rage,dead,quick_back` segment filter (a
+  session needs all listed); overview totals `rage_sessions`, `dead_sessions`,
+  `quick_back_sessions`; session rows carry the counts; journey events get `rage` / `quick_back`
+  flags; `GET /api/filters` lists all three insights with counts. Seed: photo clicks flagged dead,
+  40% of them rage bursts, 12% of link clicks a quick back (≈ 10% / 17% / 13% of sessions). Local
+  `causalfunnel` sessions rebuilt (48; M3-D4). Server tests 259.
+- **M3b tracker (`f45a689`):** a click is held 1 s (M3-D2); a `MutationObserver` (only while clicks
+  are held), a capture-phase scroll listener and `location.href` decide; unchanged → `dead: true`.
+  `pagehide` / hidden tab / `__cfTracker.flush()` send held clicks at once, unflagged; the 5 s timer
+  and the 10-event flush don't. Form fields, labels, `isContentEditable`, ctrl/⌘/shift clicks never
+  held (M3-D3). Tracker tests 29. Brave check on `/demo/products.html`: text/plain, 202, photo click
+  dead, Add to cart not, 4 quick photo clicks dead + rage, cart-link click unflagged on navigation,
+  no console errors (`scratch/dead-click-check.mjs`).
+- **M3c dashboard:** `lib/insights.ts` (pure, 6 tests), `InsightChip` (lucide icon + words),
+  Overview **Insights** card (share of sessions, count, change in points with down as good,
+  "View sessions" → Sessions tab with `insights=`), Sessions table **Insights** column, journey
+  header chips and per-event markers, **Insights** list filter (Engagement; chip joins with "and"),
+  watched segments show the three shares, lab specimens and fixtures. Dashboard tests 111; server
+  264; build, lint, typecheck clean; screenshots checked (overview, filtered sessions, journey).
+- README: insight rules, `dead` event field, tracker behaviour, API fields, data model, seed.
+- Not done: re-seeding the local DB with the new scenarios (needs the user's double confirmation);
+  README screenshots not retaken.
+- TODO: dropped "Push `da87007`" — it is already on `origin/main` (checked 2026-10-15).
+
 ## 2026-10-15 — v2 M2c: saved segments, default segment, watchlist (branch `v2`; closes M2)
 - **`lib/segments.ts`** (pure, 10 tests): a saved segment = name + its filters in a fixed order,
   without the date range (M2-D4); apply (replaces every filter, keeps the date, resets the list

@@ -16,7 +16,6 @@ Priority tags: **[M]** must (spec requirement) · **[S]** should · **[X]** stre
 - [ ] **[M]** (user) Submit the repo link and the live links
 - [ ] **[S]** (user) UptimeRobot monitor on `https://useranalytics-api.onrender.com/health` every 5 min (option a, chosen 2026-10-14). Keeps the free Render API awake: one service 24/7 uses ≤ 744 of the 750 free hours a month; don't run a second always-on free service in the same workspace
 - [ ] **[S]** (user, after submitting) Rotate the Atlas database user's password (it was pasted into the chat) and update `MONGODB_URI` on Render
-- [ ] **[S]** (agent, needs push approval) Push `da87007` (`*.env` in `.gitignore`). Not urgent: the ignore rule already protects the local `atlas-credentials.env`
 
 ---
 
@@ -35,7 +34,7 @@ Plan and decisions: `docs/v2-plan.md` (approved direction 2026-10-15). Work on t
 `v2` branch; `main` stays the submitted version. **Each milestone needs its own
 detailed plan and approval before code changes.**
 
-- [ ] **[S] M3** Insights (plan: `docs/v2-plan.md`, "M3 in detail"). M3a server + seed done (local commit). Left: **M3b** tracker dead clicks + browser check; **M3c** Overview insight cards, session chips, journey markers, Insights filter, watchlist shares; re-seed local DB (needs the user's double confirmation)
+- [ ] **[S]** (needs the user's double confirmation) Re-seed the local DB (`npm run seed -- --reset`) so the dashboard shows the M3 insight scenarios; then retake the README screenshots
 - [ ] **[S] M4** Heatmaps v2: Heat display, legend and counts, element identity (selector + box), ranked elements with badges, element heatmap, area tool, CSV export
 - [ ] **[S] M5** Engagement: page-view id, end-of-visit summary, scroll heatmap, attention map, excessive scrolling
 - [ ] **[S] M6** Custom tags (`window.trailmark.tag`), session labels, comparing two segments, privacy opt-outs (`data-cf-ignore`, `data-strip-query`), single-page-app page views

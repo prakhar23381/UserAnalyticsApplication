@@ -3,12 +3,14 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DeviceLabel from '@/components/DeviceLabel';
+import InsightChip from '@/components/InsightChip';
 import Pagination from '@/components/Pagination';
 import RelativeTime from '@/components/RelativeTime';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { DEMO_URL, POLL_MS, sessionsUrl, useApi } from '@/lib/api';
 import { formatDuration, pathOf, shortId } from '@/lib/format';
 import { countryName, isNarrowed } from '@/lib/filters';
+import { sessionInsights } from '@/lib/insights';
 import { useApiFilters, useDashboardHref, useFilters } from '@/lib/navigation';
 import type { Paginated, SessionSummary } from '@/lib/types';
 import { parsePageNumber } from '@/lib/url';
@@ -80,6 +82,7 @@ export default function SessionsTable() {
               <th scope="col" className={`${th} text-right`}>Events</th>
               <th scope="col" className={`${th} hidden text-right sm:table-cell`}>Page views</th>
               <th scope="col" className={`${th} hidden text-right sm:table-cell`}>Clicks</th>
+              <th scope="col" className={`${th} hidden md:table-cell`}>Insights</th>
               <th scope="col" className={`${th} hidden md:table-cell`}>Device</th>
               <th scope="col" className={`${th} hidden lg:table-cell`}>Browser</th>
               <th scope="col" className={`${th} hidden xl:table-cell`}>Country</th>
@@ -109,6 +112,13 @@ export default function SessionsTable() {
                   <td className={`${td} text-right tabular-nums`}>{session.event_count}</td>
                   <td className={`${td} hidden text-right tabular-nums text-ink-2 sm:table-cell`}>{session.page_views}</td>
                   <td className={`${td} hidden text-right tabular-nums text-ink-2 sm:table-cell`}>{session.clicks}</td>
+                  <td className={`${td} hidden md:table-cell`}>
+                    <div className="flex flex-wrap gap-1">
+                      {sessionInsights(session).map(({ insight, count }) => (
+                        <InsightChip key={insight} insight={insight} count={count} />
+                      ))}
+                    </div>
+                  </td>
                   <td className={`${td} hidden md:table-cell`}>
                     <DeviceLabel device={session.device} />
                   </td>

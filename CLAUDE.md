@@ -127,7 +127,8 @@ Toolchain facts that are easy to get wrong:
 │   │   ├── config.js  db.js      env (fails fast without MONGODB_URI); mongoose connect/disconnect
 │   │   ├── models/               Event.js (3 indexes), Session.js (3 indexes; derived from events) — autoIndex off
 │   │   ├── lib/                  normalizeUrl.js, device.js, validateEvent.js, userAgent.js, sessionStore.js
-│   │   │                         (rebuildSessions, ensureSessions), filters.js (the segment parser)
+│   │   │                         (rebuildSessions, ensureSessions), filters.js (the segment parser),
+│   │   │                         insights.js (rage / dead / quick back)
 │   │   ├── middleware/           cors.js (ingestCors, readCors), rateLimit.js (POST /api/events), errorHandler.js
 │   │   └── routes/               events.js, sessions.js, pages.js, heatmap.js, overview.js, filterOptions.js
 │   ├── .env                      local only, git-ignored (created from .env.example)
@@ -147,8 +148,8 @@ Toolchain facts that are easy to get wrong:
 │       │                         icon.svg, globals.css (tokens), lab/page.tsx (local only, 404 in production),
 │       │                         sessions/, sessions/[id]/, heatmap/ (redirects from the pre-v2 routes)
 │       ├── components/           TopBar, Logo, FilterBar, FilterEditor (FilterMenu, FilterEditor), SegmentMenu, Popover, Tabs,
-│       │                         Dashboard, OverviewTab (+ overview/: StatTile, SessionsChart (Recharts), DeviceSplit,
-│       │                         TopPages, ValueBars, Watchlist), SessionsTab, SessionsTable,
+│       │                         Dashboard, OverviewTab (+ overview/: StatTile, InsightCards, SessionsChart (Recharts),
+│       │                         DeviceSplit, TopPages, ValueBars, Watchlist), InsightChip, SessionsTab, SessionsTable,
 │       │                         SessionJourney, EventTimeline, EventBadge, HeatmapView, Heatmap, PageSelector,
 │       │                         ToggleGroup, DeviceLabel, Pagination, PageHeading, States, RelativeTime,
 │       │                         lab/ (Lab, ScreensSection, ComponentsSection, TokensSection, fixtures)
@@ -156,9 +157,11 @@ Toolchain facts that are easy to get wrong:
 │                                 (query-string state), filters.ts (segment: presets, FILTER_DEFS, labels, API params), navigation.ts
 │                                 (useDashboardHref, useFilters, useApiFilters), segments.ts (saved segments, watchlist;
 │                                 pure), storage.ts (localStorage hooks, guarded), overview.ts (deltas, number
-│                                 formats), types.ts, format.ts, journey.ts, heatmap.ts, *.test.ts (Vitest)
+│                                 formats), insights.ts (labels, shares), types.ts, format.ts, journey.ts, heatmap.ts,
+│                                 *.test.ts (Vitest)
 ├── scratch/                      git-ignored; browser-check.mjs, measure-layout.mjs, dashboard-check.mjs,
-│                                 iframe-debug.mjs, e2e-check.mjs (Phase 6; headless Brave over CDP), shots/,
+│                                 iframe-debug.mjs, e2e-check.mjs (Phase 6; headless Brave over CDP),
+│                                 dead-click-check.mjs (M3b), shots/,
 │                                 readme-check/ (fresh clone from the README check)
 └── .gitignore
 ```

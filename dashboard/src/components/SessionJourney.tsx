@@ -5,11 +5,13 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import DeviceLabel from '@/components/DeviceLabel';
 import EventTimeline from '@/components/EventTimeline';
+import InsightChip from '@/components/InsightChip';
 import PageHeading from '@/components/PageHeading';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { ApiError, sessionEventsUrl, useApi } from '@/lib/api';
 import { countryName } from '@/lib/filters';
 import { formatDateTime, formatDuration } from '@/lib/format';
+import { sessionInsights } from '@/lib/insights';
 import { sourceOf } from '@/lib/journey';
 import { useDashboardHref } from '@/lib/navigation';
 import type { SessionEvents, TrackedEvent } from '@/lib/types';
@@ -63,6 +65,7 @@ export default function SessionJourney({ id }: { id: string }) {
   const first = events[0];
   const last = events[events.length - 1];
   const pages = new Set(events.map((event) => event.page_url)).size;
+  const insights = session ? sessionInsights(session) : [];
 
   return (
     <>
@@ -93,6 +96,16 @@ export default function SessionJourney({ id }: { id: string }) {
         </Fact>
         <Fact label="Country">{session?.country ? countryName(session.country) : 'Unknown'}</Fact>
         <Fact label="Source">{session?.source ?? sourceOf(first)}</Fact>
+        {insights.length > 0 && (
+          <div className="col-span-2 sm:col-span-4">
+            <dt className="text-xs font-medium text-ink-3">Insights</dt>
+            <dd className="mt-1 flex flex-wrap gap-1.5">
+              {insights.map(({ insight, count }) => (
+                <InsightChip key={insight} insight={insight} count={count} />
+              ))}
+            </dd>
+          </div>
+        )}
       </dl>
       <EventTimeline events={events} heatmapHref={heatmapHref} />
     </>

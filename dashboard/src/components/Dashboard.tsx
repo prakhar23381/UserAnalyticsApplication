@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
+import FilterBar from '@/components/FilterBar';
 import HeatmapView from '@/components/HeatmapView';
 import OverviewTab from '@/components/OverviewTab';
 import SessionsTab from '@/components/SessionsTab';
@@ -18,8 +19,10 @@ export default function Dashboard() {
 
   return (
     <>
+      {/* The segment on top, scoping the three tabs below it (D2 in docs/v2-plan.md). */}
       <div className="border-b border-line bg-surface">
         <div className="mx-auto max-w-7xl px-4">
+          <FilterBar />
           <Tabs active={tab} />
         </div>
       </div>

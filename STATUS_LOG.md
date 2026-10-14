@@ -2,6 +2,42 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-15 — v2 M1b: filter bar and Overview (branch `v2`; closes M1)
+- **API (additive; old calls unchanged):** `server/src/lib/filters.js` parses `from`, `to`
+  (ISO 8601, half-open) and `devices` (comma list), with 400s for bad values.
+  `GET /api/sessions` keeps sessions that started in the range on those devices;
+  `GET /api/pages` counts events in the range on those devices; `GET /api/heatmap` takes the
+  range only (its `device` stays the layout). New `GET /api/overview`: totals (sessions, page
+  views, clicks, average duration, pages per session, bounce rate), the previous period of equal
+  length, sessions per UTC day with gaps filled, top 5 pages, sessions per device. Bug found by
+  its tests: `$limit: 0` is invalid in a `$facet`, so "all time" leaves the previous facet out.
+  Server tests: 178 (+26: `filters`, `overview`, `filteredReads`).
+- **Filter bar** (the segment, above the tabs): date presets (24 h, 7, 30 [default], 90 days, all
+  time) and device chips (icon + label, at least one stays on), in `?range=` / `?devices=`.
+  `lib/filters.ts` rounds `from` down to 5 minutes so SWR's key is stable while polling;
+  changing a filter resets the list page. Sessions, Heatmaps (page list, clicks; devices outside
+  the segment are disabled, with a note) and Overview all follow it.
+- **Overview tab:** stat tiles (change vs the previous period: relative %, bounce rate in
+  percentage points with up = bad, arrow + text, hidden with a note when the previous period had
+  no sessions), sessions-over-time area chart (Recharts: 2 px line, 10% wash, crosshair tooltip,
+  table view), top pages bar list (one colour), devices stacked bar with legend and values.
+  Recharts loads only with this tab (`next/dynamic`).
+- **Charts follow the dataviz skill:** device colours are its categorical slots 1–3, validated with
+  its script against our surfaces (light: all pass, aqua 2.82:1 → labels/legend carry it; dark: all
+  pass). Delta text colours: success green, and a lighter red in dark mode for 4.5:1.
+- **Dependencies:** `recharts` 3.10.1. Its peer `react-is` resolved to the hoisted 16.13.1 (from
+  lint tooling), so the root `package.json` overrides `react-is` to 19.3.0; `immer` is overridden
+  to 11.1.18 (11.1.19–21 were 13 days old). A first attempt with `npm dedupe` also bumped postcss
+  to a 3-day-old release and moved a lint util; it was redone from the committed lockfile so the
+  only changed existing entry is `react-is`. Every added package's release date was checked.
+- **Dev server:** the dashboard's `next dev` (running since 2026-10-13) kept serving stale Tailwind
+  CSS after a `globals.css` edit; it was restarted from this session.
+- Lab: Overview specimens (sample data; no-previous-data case). README: screenshots of v2
+  (overview.png new), filter parameters, `GET /api/overview`, tech stack. Dashboard tests: 87
+  (+19: `filters`, `overview`). Typecheck, lint, build clean; `/lab` 404 in production; Brave
+  screenshots in light, dark and at 390 px show no console or network errors; the chart tooltip
+  was checked by hovering.
+
 ## 2026-10-15 — v2 M1a: Trailmark look, one-page layout, UI lab (branch `v2`)
 - **Pushed `main` first** (user asked): `da87007` and `8577f33` → `origin/main` = `8577f33`,
   the submitted version. All v2 work is on the local branch `v2`; the plan is

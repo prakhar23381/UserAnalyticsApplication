@@ -1,5 +1,6 @@
 import useSWR, { type SWRConfiguration } from 'swr';
 import { API_URL } from './config';
+import { type ApiFilterParams, apiFilterQuery } from './filters';
 import type { ApiErrorBody, Device } from './types';
 
 export { API_URL, DEMO_URL } from './config';
@@ -33,12 +34,19 @@ export function useApi<T>(url: string | null, options?: SWRConfiguration<T, Erro
   return useSWR<T, Error>(url, fetcher<T>, { refreshInterval: POLL_MS, ...options });
 }
 
-export const sessionsUrl = (page: number) => `${API_URL}/api/sessions?page=${page}`;
+// The filter bar's parameters ride along on every read (lib/filters.ts).
+export const sessionsUrl = (page: number, filters: ApiFilterParams = {}) =>
+  `${API_URL}/api/sessions?page=${page}${apiFilterQuery(filters)}`;
 
 export const sessionEventsUrl = (id: string) =>
   `${API_URL}/api/sessions/${encodeURIComponent(id)}/events`;
 
-export const pagesUrl = () => `${API_URL}/api/pages`;
+export const pagesUrl = (filters: ApiFilterParams = {}) =>
+  `${API_URL}/api/pages${apiFilterQuery(filters).replace(/^&/, '?')}`;
 
-export const heatmapUrl = (page: string, device: Device) =>
-  `${API_URL}/api/heatmap?${new URLSearchParams({ page, device })}`;
+// Only the date range applies: `device` picks the layout to draw.
+export const heatmapUrl = (page: string, device: Device, filters: ApiFilterParams = {}) =>
+  `${API_URL}/api/heatmap?${new URLSearchParams({ page, device })}${apiFilterQuery(filters, ['from'])}`;
+
+export const overviewUrl = (filters: ApiFilterParams = {}) =>
+  `${API_URL}/api/overview${apiFilterQuery(filters).replace(/^&/, '?')}`;

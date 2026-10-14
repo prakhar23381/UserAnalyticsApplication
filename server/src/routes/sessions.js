@@ -1,4 +1,5 @@
 import express from 'express';
+import { parseFilters, withFilters } from '../lib/filters.js';
 import { SESSION_ID_RE } from '../lib/validateEvent.js';
 import { Event } from '../models/Event.js';
 
@@ -24,6 +25,10 @@ router.get('/sessions', async (req, res) => {
   if (page === null || limit === null) {
     return res.status(400).json({ error: 'page and limit must each be given once' });
   }
+  const parsed = parseFilters(req.query);
+  if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+  // Sessions that started in the range, on the chosen devices (a session's device is its first event's).
+  const sessionMatch = withFilters({}, parsed.filters, { field: 'first_seen', deviceField: 'device' });
 
   const [result] = await Event.aggregate([
     { $sort: { session_id: 1, timestamp: 1 } }, // walks the { session_id, timestamp } index
@@ -40,6 +45,7 @@ router.get('/sessions', async (req, res) => {
         device: { $first: '$device' },
       },
     },
+    ...(Object.keys(sessionMatch).length > 0 ? [{ $match: sessionMatch }] : []),
     { $sort: { last_seen: -1, _id: 1 } },
     {
       $facet: {

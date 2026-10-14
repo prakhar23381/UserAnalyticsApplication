@@ -35,7 +35,6 @@ Plan and decisions: `docs/v2-plan.md` (approved direction 2026-10-15). Work on t
 `v2` branch; `main` stays the submitted version. **Each milestone needs its own
 detailed plan and approval before code changes.**
 
-- [ ] **[S] M1** (M1a done 2026-10-15: brand, tokens, icons, one-page tabs, UI lab) **M1b:** filter bar (date range, devices) with additive API params, `GET /api/overview`, Overview totals and charts (Recharts); README screenshots retaken after M1b
 - [ ] **[S] M2** Segments: `sessions` collection updated on ingest + backfill, browser/OS/country/campaign enrichment, every filter on every tab (heatmaps count only matching sessions), saved segments, default segment, watchlist (browser storage); check whether Render forwards `CF-IPCountry`
 - [ ] **[S] M3** Insights: rage clicks, quick backs (server), dead clicks (tracker); Overview insight cards; session insight chips
 - [ ] **[S] M4** Heatmaps v2: Heat display, legend and counts, element identity (selector + box), ranked elements with badges, element heatmap, area tool, CSV export

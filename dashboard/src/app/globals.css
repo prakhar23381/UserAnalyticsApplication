@@ -37,6 +37,14 @@
   --accent: var(--color-brand-600);
   --accent-soft: var(--color-brand-50);
   --accent-ink: var(--color-brand-700);
+  /* Charts: device colours are categorical slots 1–3 of the dataviz reference palette,
+     validated (all pairs, CVD and contrast) against these surfaces; the order is fixed. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  /* Change vs the previous period: always with an arrow and words, never colour alone. */
+  --delta-good: #006300;
+  --delta-bad: #d03b3b;
 }
 
 [data-theme='dark'] {
@@ -51,6 +59,11 @@
   --accent: var(--color-brand-400);
   --accent-soft: oklch(30% 0.09 277);
   --accent-ink: var(--color-brand-300);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --delta-good: #0ca30c;
+  --delta-bad: #f87171;
 }
 
 @theme inline {
@@ -64,4 +77,9 @@
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-accent-ink: var(--accent-ink);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-delta-good: var(--delta-good);
+  --color-delta-bad: var(--delta-bad);
 }

@@ -7,13 +7,14 @@ import EventTimeline from '@/components/EventTimeline';
 import Heatmap from '@/components/Heatmap';
 import Logo, { LogoMark } from '@/components/Logo';
 import Pagination from '@/components/Pagination';
+import { OverviewContent } from '@/components/OverviewTab';
 import { LiveNote } from '@/components/SessionsTable';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import ToggleGroup from '@/components/ToggleGroup';
 import { ApiError } from '@/lib/api';
 import { layoutClicks } from '@/lib/heatmap';
 import type { Device } from '@/lib/types';
-import { LAB_CLICKS, LAB_EVENTS, LAB_HEATMAP_PAGE } from './fixtures';
+import { LAB_CLICKS, LAB_EVENTS, LAB_HEATMAP_PAGE, LAB_OVERVIEW } from './fixtures';
 
 function Specimen({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
   return (
@@ -89,6 +90,14 @@ export default function ComponentsSection() {
           <ErrorState error={new TypeError('Failed to fetch')} stale />
         </Specimen>
       </div>
+
+      <Specimen title="Overview" note="sample data: stat tiles with changes, sessions chart (hover it), top pages, devices">
+        <OverviewContent data={LAB_OVERVIEW} period="previous 14 days" heatmapHref={() => '#'} />
+      </Specimen>
+
+      <Specimen title="Overview: no previous data" note="comparison hidden, with a note">
+        <OverviewContent data={{ ...LAB_OVERVIEW, previous: { ...LAB_OVERVIEW.previous!, sessions: 0 } }} period="previous 14 days" heatmapHref={() => '#'} />
+      </Specimen>
 
       <Specimen title="Journey timeline" note="sample session">
         <EventTimeline events={LAB_EVENTS} heatmapHref={() => '#'} />

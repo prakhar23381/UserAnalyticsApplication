@@ -1,4 +1,5 @@
 import express from 'express';
+import { parseFilters, withFilters } from '../lib/filters.js';
 import { normalizeUrl } from '../lib/normalizeUrl.js';
 import { DEVICES, Event } from '../models/Event.js';
 
@@ -18,6 +19,10 @@ router.get('/heatmap', async (req, res) => {
     return res.status(400).json({ error: `device must be one of: ${DEVICE_FILTERS.join(', ')}` });
   }
 
+  // Only the date range applies here: `device` above picks the layout to draw.
+  const parsed = parseFilters({ from: req.query.from, to: req.query.to });
+  if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+
   let pageUrl;
   try {
     pageUrl = normalizeUrl(page); // same identity the events were stored under
@@ -25,7 +30,9 @@ router.get('/heatmap', async (req, res) => {
     return res.status(400).json({ error: 'page must be a valid URL' });
   }
 
-  const filter = { page_url: pageUrl, type: 'click', ...(device !== 'all' && { device }) };
+  const filter = withFilters({ page_url: pageUrl, type: 'click', ...(device !== 'all' && { device }) }, parsed.filters, {
+    field: 'timestamp',
+  });
   const [total_clicks, clicks] = await Promise.all([
     Event.countDocuments(filter),
     Event.find(filter, { _id: 0, x: 1, y: 1, doc_w: 1, doc_h: 1, viewport_w: 1, viewport_h: 1, device: 1 })

@@ -6,6 +6,7 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { INGEST_LIMIT, ingestRateLimit } from './middleware/rateLimit.js';
 import eventsRouter from './routes/events.js';
 import heatmapRouter from './routes/heatmap.js';
+import overviewRouter from './routes/overview.js';
 import pagesRouter from './routes/pages.js';
 import sessionsRouter from './routes/sessions.js';
 
@@ -45,7 +46,7 @@ export function createApp({
 
   // After CORS, so a browser can read the 429; before the router parses the tracker's text/plain body.
   app.use('/api/events', ingestCors, ingestRateLimit(ingestLimit, { clientIpHeader }), eventsRouter);
-  app.use('/api', readCors(dashboardOrigins), sessionsRouter, pagesRouter, heatmapRouter);
+  app.use('/api', readCors(dashboardOrigins), sessionsRouter, pagesRouter, heatmapRouter, overviewRouter);
 
   app.use(notFound);
   app.use(errorHandler({ isProduction }));

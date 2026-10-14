@@ -87,6 +87,25 @@ export interface HeatmapResponse {
   clicks: HeatmapClick[];
 }
 
+export interface OverviewTotals {
+  sessions: number;
+  page_views: number;
+  clicks: number;
+  avg_duration_ms: number;
+  pages_per_session: number;
+  bounce_rate: number; // 0–1: share of sessions with at most one page view
+}
+
+/** GET /api/overview */
+export interface OverviewResponse {
+  range: { from: string | null; to: string };
+  totals: OverviewTotals;
+  previous: OverviewTotals | null; // the period of equal length just before; null for all time
+  series: { date: string; sessions: number }[]; // UTC days, gaps filled with 0
+  top_pages: { page_url: string; page_views: number }[];
+  devices: { device: Device; sessions: number }[];
+}
+
 /** Body of every 4xx/5xx response */
 export interface ApiErrorBody {
   error: string;

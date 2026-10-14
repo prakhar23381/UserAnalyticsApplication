@@ -78,6 +78,8 @@ Toolchain facts that are easy to get wrong:
 - Tailwind 4 runs through the `@tailwindcss/turbopack` loader in `next.config.ts`, not PostCSS. A `next build --webpack` would ship without styles.
 - `dashboard/src/lib/config.ts` throws at import when `NEXT_PUBLIC_API_URL` is unset, so a build without it fails loudly instead of pointing at nothing.
 - Server components must import `API_URL` / `DEMO_URL` from `lib/config.ts`, never `lib/api.ts`: that module imports SWR, which has no default export in a server component (every page 500s).
+- The root `package.json` **overrides** `react-is` to 19.3.0 (Recharts' peer must match React 19; the hoisted copy was 16) and `immer` to 11.1.18 (11.1.19–21 were under two weeks old). Peers come from the shared root copy, so a scoped override can't do it. Don't run `npm dedupe` casually: it also bumped unrelated packages (postcss) to days-old releases.
+- The dashboard's `next dev` can miss a `globals.css` change and keep serving stale Tailwind output (new token classes missing). Restart the dashboard dev server; `touch` isn't enough.
 - Dark mode follows `data-theme` on `<html>` (set before paint by the script in `layout.tsx`; `?theme=light|dark` forces it), not the media query. The brand scale is `@theme static` so every shade exists as a CSS variable.
 - There is no Python and no virtualenv. Flask is allowed by the spec, but this project doesn't use it.
 - Add dependencies with `npm i <pkg> -w server` or `-w dashboard` from `<root>`, never with `npm install` inside a workspace folder.
@@ -123,9 +125,9 @@ Toolchain facts that are easy to get wrong:
 │   │   ├── app.js                createApp({ dashboardOrigins, isProduction }); helmet, static, routers
 │   │   ├── config.js  db.js      env (fails fast without MONGODB_URI); mongoose connect/disconnect
 │   │   ├── models/Event.js       schema + the 3 indexes (autoIndex off)
-│   │   ├── lib/                  normalizeUrl.js, device.js, validateEvent.js
+│   │   ├── lib/                  normalizeUrl.js, device.js, validateEvent.js, filters.js (from/to/devices on reads)
 │   │   ├── middleware/           cors.js (ingestCors, readCors), rateLimit.js (POST /api/events), errorHandler.js
-│   │   └── routes/               events.js, sessions.js, pages.js, heatmap.js
+│   │   └── routes/               events.js, sessions.js, pages.js, heatmap.js, overview.js
 │   ├── .env                      local only, git-ignored (created from .env.example)
 │   ├── public/
 │   │   ├── tracker.js            the tracking script, served as-is at /tracker.js
@@ -141,13 +143,15 @@ Toolchain facts that are easy to get wrong:
 │       ├── app/                  layout.tsx (TopBar, Inter, theme script), page.tsx (the one-page dashboard),
 │       │                         icon.svg, globals.css (tokens), lab/page.tsx (local only, 404 in production),
 │       │                         sessions/, sessions/[id]/, heatmap/ (redirects from the pre-v2 routes)
-│       ├── components/           TopBar, Logo, Tabs, Dashboard, OverviewTab, SessionsTab, SessionsTable,
+│       ├── components/           TopBar, Logo, FilterBar, Tabs, Dashboard, OverviewTab (+ overview/: StatTile,
+│       │                         SessionsChart (Recharts), DeviceSplit, TopPages), SessionsTab, SessionsTable,
 │       │                         SessionJourney, EventTimeline, EventBadge, HeatmapView, Heatmap, PageSelector,
 │       │                         ToggleGroup, DeviceLabel, Pagination, PageHeading, States, RelativeTime,
 │       │                         lab/ (Lab, ScreensSection, ComponentsSection, TokensSection, fixtures)
 │       └── lib/                  config.ts (API_URL, DEMO_URL; server-safe), api.ts (useApi, URLs), url.ts
-│                                 (query-string state), navigation.ts (useDashboardHref), types.ts, format.ts,
-│                                 journey.ts, heatmap.ts, *.test.ts (Vitest)
+│                                 (query-string state), filters.ts (segment presets, API params), navigation.ts
+│                                 (useDashboardHref, useFilters, useApiFilters), overview.ts (deltas, number
+│                                 formats), types.ts, format.ts, journey.ts, heatmap.ts, *.test.ts (Vitest)
 ├── scratch/                      git-ignored; browser-check.mjs, measure-layout.mjs, dashboard-check.mjs,
 │                                 iframe-debug.mjs, e2e-check.mjs (Phase 6; headless Brave over CDP), shots/,
 │                                 readme-check/ (fresh clone from the README check)

@@ -8,7 +8,8 @@ import RelativeTime from '@/components/RelativeTime';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { DEMO_URL, POLL_MS, sessionsUrl, useApi } from '@/lib/api';
 import { formatDuration, pathOf, shortId } from '@/lib/format';
-import { useDashboardHref } from '@/lib/navigation';
+import { ALL_DEVICES } from '@/lib/filters';
+import { useApiFilters, useDashboardHref, useFilters } from '@/lib/navigation';
 import type { Paginated, SessionSummary } from '@/lib/types';
 import { parsePageNumber } from '@/lib/url';
 
@@ -30,10 +31,20 @@ export default function SessionsTable() {
   const hrefFor = useDashboardHref();
   const page = parsePageNumber(useSearchParams().get('p'));
   const pageHref = (n: number) => hrefFor({ p: n > 1 ? n : null });
-  // keepPreviousData: the current rows stay while the next page loads.
-  const { data, error } = useApi<Paginated<SessionSummary>>(sessionsUrl(page), { keepPreviousData: true });
+  const filters = useFilters();
+  const narrowed = filters.range !== 'all' || filters.devices.length < ALL_DEVICES.length;
+  // keepPreviousData: the current rows stay while the next page (or segment) loads.
+  const { data, error } = useApi<Paginated<SessionSummary>>(sessionsUrl(page, useApiFilters()), { keepPreviousData: true });
 
   if (!data) return error ? <ErrorState error={error} /> : <LoadingState rows={8} />;
+
+  if (data.total === 0 && narrowed) {
+    return (
+      <EmptyState title="No sessions in this segment">
+        Try a longer date range or more devices in the filter bar.
+      </EmptyState>
+    );
+  }
 
   if (data.total === 0) {
     return (

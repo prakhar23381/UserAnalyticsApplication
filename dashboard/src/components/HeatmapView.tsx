@@ -12,7 +12,7 @@ import ToggleGroup, { type ToggleOption } from '@/components/ToggleGroup';
 import { DEMO_URL, heatmapUrl, pagesUrl, useApi } from '@/lib/api';
 import { pathOf } from '@/lib/format';
 import { layoutClicks } from '@/lib/heatmap';
-import { useDashboardHref } from '@/lib/navigation';
+import { useApiFilters, useDashboardHref, useFilters } from '@/lib/navigation';
 import type { Device, HeatmapResponse, PagesResponse } from '@/lib/types';
 
 const DEVICES: ToggleOption<Device>[] = (['desktop', 'tablet', 'mobile'] as const).map((device) => ({
@@ -53,7 +53,13 @@ export default function HeatmapView() {
   const device = parseDevice(params.get('device'));
   const mode: HeatmapMode = params.get('mode') === 'grid' ? 'grid' : 'dots';
 
-  const pages = useApi<PagesResponse>(pagesUrl());
+  const filters = useFilters();
+  const apiFilters = useApiFilters();
+  // Devices left out of the segment can't be drawn.
+  const deviceOptions = DEVICES.map((option) => ({ ...option, disabled: !filters.devices.includes(option.value) }));
+  const deviceFiltered = !filters.devices.includes(device);
+
+  const pages = useApi<PagesResponse>(pagesUrl(apiFilters));
   // Without ?page=, show the most-clicked page (the API sorts by clicks)...
   const defaultPage = pages.data?.data[0]?.page_url;
   const page = params.get('page') ?? defaultPage ?? null;
@@ -64,7 +70,9 @@ export default function HeatmapView() {
   }, [defaultPage, params, router, hrefFor]);
   // keepPreviousData: the old picture stays until the new one arrives. The
   // stage draws from the response's own page_url, so page and clicks always match.
-  const heatmap = useApi<HeatmapResponse>(page ? heatmapUrl(page, device) : null, { keepPreviousData: true });
+  const heatmap = useApi<HeatmapResponse>(page && !deviceFiltered ? heatmapUrl(page, device, apiFilters) : null, {
+    keepPreviousData: true,
+  });
   const layout = useMemo(
     () => (heatmap.data ? layoutClicks(heatmap.data.clicks, parseDevice(heatmap.data.device)) : null),
     [heatmap.data],
@@ -97,27 +105,20 @@ export default function HeatmapView() {
   // What is on screen, which lags the URL while the next response loads.
   const shownDevice = parseDevice(data?.device ?? device);
 
-  return (
+  // Below the toolbar: the drawing, or why there isn't one.
+  const stage = deviceFiltered ? (
+    <EmptyState title={`${DEVICE_META[device].label} is left out of the segment`}>
+      Add it in the filter bar, or pick a device that&apos;s included.
+    </EmptyState>
+  ) : (
     <>
-      {heading}
-      <div className="mb-4 flex flex-wrap items-end gap-4 rounded-xl border border-line bg-surface p-3 shadow-xs">
-        <PageSelector
-          pages={pages.data?.data ?? []}
-          value={data?.page_url ?? page}
-          onChange={(pageUrl) => router.push(hrefFor({ page: pageUrl }), { scroll: false })}
-        />
-        <ToggleGroup label="Device" options={DEVICES} value={device} hrefFor={(value) => hrefFor({ device: value === 'desktop' ? null : value })} />
-        <ToggleGroup label="Show" options={MODES} value={mode} hrefFor={(value) => hrefFor({ mode: value === 'dots' ? null : value })} />
-      </div>
-
       {heatmap.error && <ErrorState error={heatmap.error} stale={Boolean(data)} />}
       {!data && !heatmap.error && <LoadingState />}
-
       {data && layout && (
         <div className={heatmap.isLoading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
           {data.total_clicks === 0 ? (
             <EmptyState title={`No ${DEVICE_META[shownDevice].label.toLowerCase()} clicks on ${pathOf(data.page_url)} yet`}>
-              Try another device, or open the page at that size and click around.
+              Try another device or date range, or open the page at that size and click around.
             </EmptyState>
           ) : (
             <div className="rounded-xl border border-line bg-surface p-3 shadow-xs">
@@ -136,6 +137,27 @@ export default function HeatmapView() {
           )}
         </div>
       )}
+    </>
+  );
+
+  return (
+    <>
+      {heading}
+      <div className="mb-4 flex flex-wrap items-end gap-4 rounded-xl border border-line bg-surface p-3 shadow-xs">
+        <PageSelector
+          pages={pages.data?.data ?? []}
+          value={data?.page_url ?? page}
+          onChange={(pageUrl) => router.push(hrefFor({ page: pageUrl }), { scroll: false })}
+        />
+        <ToggleGroup
+          label="Device"
+          options={deviceOptions}
+          value={device}
+          hrefFor={(value) => hrefFor({ device: value === 'desktop' ? null : value })}
+        />
+        <ToggleGroup label="Show" options={MODES} value={mode} hrefFor={(value) => hrefFor({ mode: value === 'dots' ? null : value })} />
+      </div>
+      {stage}
     </>
   );
 }

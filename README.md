@@ -32,18 +32,27 @@ take up to a minute.
 
 ## Screenshots
 
-**Sessions.** Every session, with event counts, most recent activity first.
-The list refreshes every 5 seconds.
+The dashboard is one page: a filter bar (the segment: date range and devices)
+on top, then three tabs that it scopes.
+
+**Overview.** Headline numbers with the change from the previous period,
+sessions per day, top pages and the device split.
+
+![Overview](docs/images/overview.png)
+
+**Sessions.** Every session in the segment, with event counts, most recent
+activity first. The list refreshes every 5 seconds.
 
 ![Sessions list](docs/images/sessions.png)
 
-**User journey.** One session's events in order, grouped by page visit. The
-header shows the traffic source (`utm_source`, else the referrer).
+**User journey.** One session's events in order, grouped by page visit, opened
+inside the Sessions tab. The header shows the traffic source (`utm_source`,
+else the referrer).
 
 ![User journey](docs/images/journey.png)
 
-**Heatmap.** Clicks drawn over the live page at a fixed width per device,
-as dots or a 40 px grid.
+**Heatmaps.** Clicks drawn over the live page at a fixed width per device, as
+dots or a 40 px grid.
 
 ![Click heatmap](docs/images/heatmap.png)
 
@@ -119,7 +128,7 @@ end-to-end check. The current rules put every checked click on its element.
 | Tracker | Vanilla JavaScript (ES5 syntax), no dependencies, no build step | Works on any page as a single `<script>` tag: 7 KB, about 3 KB gzipped |
 | API | Node.js 22, Express 5, ESM JavaScript, helmet, cors, express-rate-limit | Same language as the tracker and the dashboard, and no build step to deploy |
 | Database | MongoDB 7 with Mongoose 9 | Schema, validation and indexes are declared in one place |
-| Dashboard | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, SWR | Polling with SWR makes the dashboard live without websockets |
+| Dashboard | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, SWR, Recharts, lucide-react | Polling with SWR makes the dashboard live without websockets; Recharts draws the charts; every icon has a text label |
 | Tests | Vitest, supertest, mongodb-memory-server, happy-dom | Real MongoDB queries without a running database. The tracker runs in a simulated browser |
 | Hosting | Render (API, tracker, demo pages), Vercel (dashboard), MongoDB Atlas M0 | All free tiers |
 
@@ -330,6 +339,13 @@ the same as in the database.
 - **Errors.** Every error body is `{ "error": "message" }`.
 - **Query parameters.** A parameter repeated in the query (`?page=1&page=2`)
   gets a `400`.
+- **Filters.** The read endpoints take the dashboard's filter bar as optional
+  parameters: `from` and `to` (ISO 8601 instants; `from` inclusive, `to`
+  exclusive) and `devices` (a comma-separated subset of `desktop,tablet,mobile`).
+  `GET /api/sessions` and `GET /api/overview` keep sessions that **started** in
+  the range on those devices; `GET /api/pages` counts the events in the range on
+  those devices; `GET /api/heatmap` takes the range only, since its own `device`
+  picks the layout. Without them, every endpoint behaves as before.
 - **Rate limit.** `POST /api/events` allows 120 requests a minute per client.
   Responses carry `RateLimit` and `RateLimit-Policy` headers, and a client over
   the limit gets `429` with a `Retry-After` header. The read endpoints aren't
@@ -342,6 +358,7 @@ the same as in the database.
 | `GET` | `/api/sessions/:id/events` | One session's events, in order |
 | `GET` | `/api/pages` | Every tracked page, for the heatmap's page picker |
 | `GET` | `/api/heatmap` | Click positions on one page |
+| `GET` | `/api/overview` | Headline numbers, sessions per day, top pages and devices for a segment |
 
 The server also serves `GET /health` (`{ "ok": true }`), `GET /tracker.js` and
 the demo shop at `/demo/`.
@@ -498,6 +515,41 @@ Each click carries only the fields the heatmap needs.
   ]
 }
 ```
+
+### `GET /api/overview`
+
+Takes the filters above. Without `to`, the range ends now.
+
+| Field | Meaning |
+|---|---|
+| `totals` | Sessions that started in the range: sessions, page views, clicks, average duration, pages per session, and bounce rate (the share of sessions with at most one page view, 0–1) |
+| `previous` | The same numbers for the period of equal length just before `from`; `null` without `from` (all time) |
+| `series` | Sessions per UTC day, with days without sessions filled in as 0 |
+| `top_pages` | The five pages with the most page views in the range |
+| `devices` | Sessions per device (a session's device is its first event's) |
+
+```json
+{
+  "range": { "from": "2026-10-08T00:00:00.000Z", "to": "2026-10-15T00:00:00.000Z" },
+  "totals": { "sessions": 37, "page_views": 90, "clicks": 132, "avg_duration_ms": 23678, "pages_per_session": 2.43, "bounce_rate": 0.4324 },
+  "previous": { "sessions": 11, "page_views": 22, "clicks": 28, "avg_duration_ms": 22687, "pages_per_session": 2, "bounce_rate": 0.3636 },
+  "series": [
+    { "date": "2026-10-08", "sessions": 7 },
+    { "date": "2026-10-09", "sessions": 7 }
+  ],
+  "top_pages": [
+    { "page_url": "http://localhost:4000/demo/products.html", "page_views": 47 },
+    { "page_url": "http://localhost:4000/demo", "page_views": 24 }
+  ],
+  "devices": [
+    { "device": "desktop", "sessions": 16 },
+    { "device": "mobile", "sessions": 13 },
+    { "device": "tablet", "sessions": 8 }
+  ]
+}
+```
+
+The series is shortened here; the response has one entry per day.
 
 ## Data model and indexes
 
@@ -661,8 +713,8 @@ scale. See the trade-offs below.
     ├── vercel.json             install command for Vercel
     └── src/
         ├── app/                / (Overview · Sessions · Heatmaps tabs), /lab (local only); old routes redirect
-        ├── components/         tables, journey timeline, heatmap canvas, states
-        └── lib/                API client, types, heatmap math, formatting, with unit tests
+        ├── components/         filter bar, tabs, Overview (stat tiles, chart, top pages, devices), tables, journey timeline, heatmap canvas, states, lab/
+        └── lib/                API client, URL state, filters, overview maths, heatmap maths, formatting, with unit tests
 ```
 
 The repo also holds my working notes from the build: `TODO.md` (open work),

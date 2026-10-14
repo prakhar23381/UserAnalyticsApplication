@@ -1,14 +1,14 @@
 import express from 'express';
-import { parseFilters, withFilters } from '../lib/filters.js';
+import { eventMatch, parseFilters } from '../lib/filters.js';
 import { Event } from '../models/Event.js';
 
 const router = express.Router();
 
-// Every tracked page, for the heatmap's page picker. Most-clicked first.
+// Every page the segment's sessions saw, for the heatmap's page picker. Most-clicked first.
 router.get('/pages', async (req, res) => {
   const parsed = parseFilters(req.query);
   if (!parsed.ok) return res.status(400).json({ error: parsed.error });
-  const match = withFilters({}, parsed.filters, { field: 'timestamp', deviceField: 'device' });
+  const match = await eventMatch(parsed.filters);
 
   const data = await Event.aggregate([
     ...(Object.keys(match).length > 0 ? [{ $match: match }] : []),

@@ -31,8 +31,17 @@ describe('GET /api/sessions', () => {
           last_seen: iso(31),
           duration_ms: 31_000,
           entry_page: HOME,
+          exit_page: PRODUCTS,
           pages_visited: 2,
           device: 'desktop',
+          browser: 'Other',
+          os: 'Other',
+          country: null,
+          referrer: null,
+          utm_source: null,
+          utm_medium: null,
+          utm_campaign: null,
+          source: 'Direct',
         },
       ],
       page: 1,
@@ -104,6 +113,7 @@ describe('GET /api/sessions/:id/events', () => {
     const res = await get('/api/sessions/a/events');
     expect(res.status).toBe(200);
     expect(res.body.session_id).toBe('a');
+    expect(res.body.session).toMatchObject({ session_id: 'a', event_count: 3, clicks: 2, browser: 'Other', source: 'Direct' });
     expect(res.body.events.map((e) => [e.type, e.timestamp])).toEqual([
       ['page_view', iso(0)],
       ['click', iso(12)],

@@ -87,11 +87,15 @@ dots or a 40 px grid.
 3. **Ingestion.** The API validates each event on its own and keeps the valid
    ones. It normalizes `page_url` (the browser's URL is kept as `raw_url`),
    derives `device` from the viewport width, adds the server's `received_at`
-   and the request's `User-Agent`, and inserts the batch. It answers `202`
-   with accepted and rejected counts.
+   and the request's `User-Agent`, and inserts the batch. Then it recomputes
+   each session in the batch from its events into the `sessions` collection
+   (browser, OS, country, source, campaign, entry and exit page). It answers
+   `202` with accepted and rejected counts.
 4. **Reading.** The dashboard fetches from the browser with SWR and re-fetches
-   every 5 seconds, so new visits appear without a reload. Sessions are
-   aggregated from the events at read time.
+   every 5 seconds, so new visits appear without a reload. The filter bar
+   picks a segment, a set of sessions: lists and totals read the `sessions`
+   collection, and heatmaps and page counts read the events of the matching
+   sessions.
 5. **Heatmap.** The page itself is shown in a sandboxed iframe (no scripts, no
    navigation) at the device's reference width, with `?cf_preview=1` so the
    tracker on it stays off. The clicks are drawn on top.
@@ -176,6 +180,7 @@ in-memory test database, into `node_modules/.cache`.
 | | `DASHBOARD_ORIGIN` | Comma-separated origins allowed to call the read endpoints. The same list goes into the CSP `frame-ancestors`, which lets the dashboard show the demo pages in an iframe. Default `http://localhost:3000`. |
 | | `NODE_ENV` | `production` hides the messages of 500 errors and turns on `upgrade-insecure-requests`. |
 | | `CLIENT_IP_HEADER` | Production only. A header the hosting edge overwrites with the client's address, used to tell clients apart for the rate limit (`true-client-ip` on Render). Leave it unset anywhere else: without such an edge, clients could send their own. |
+| | `COUNTRY_HEADER` | Production only. A header the hosting edge sets to the visitor's two-letter country (`cf-ipcountry` behind Cloudflare). It is stored as `country`; IP addresses never are. Unset, sessions have no country. |
 | `dashboard/.env.local` | `NEXT_PUBLIC_API_URL` | Required. Base URL of the API. It is inlined at build time, so a build without it fails, and changing it needs a rebuild. |
 
 Only the `*.example` files are committed.
@@ -315,8 +320,9 @@ npm run seed -- --sessions 80     # 1 to 1000 sessions
 ```
 
 - **Sessions.** They are spread over the past 7 days, with a device mix of
-  50% desktop, 35% mobile and 15% tablet. They vary their entry page and
-  their traffic source (UTM tags and referrers). Visitors browse, add to cart
+  50% desktop, 35% mobile and 15% tablet. They vary their entry page, their
+  traffic source (UTM source, medium and campaign, and referrers), their
+  browser and OS, and their country. Visitors browse, add to cart
   and sign up for the newsletter. About 40% leave after one page.
 - **Clicks.** Every click lands on a real element. The positions come from
   the demo pages, measured at the heatmap's reference widths (1280, 768,
@@ -324,10 +330,20 @@ npm run seed -- --sessions 80     # 1 to 1000 sessions
 - **Validation.** Every event goes through the API's validator before it is
   stored.
 - **Safe re-seeding.** Seeded session ids start with `seed_`, and `--reset`
-  deletes only those. Real visits survive a re-seed.
+  deletes only those, events and session summaries. Real visits survive a
+  re-seed.
 - **Remote databases.** The script refuses to write to a database that isn't
   on localhost unless you pass `--allow-remote`. `--base-url` sets the host
   in the seeded page URLs (default `http://localhost:4000`).
+
+The `sessions` collection is built from the events, so it can always be
+recreated. The API does that by itself on its first start with an empty
+`sessions` collection. After a change to how sessions are summarized, rebuild
+it by hand (the same `--allow-remote` rule applies):
+
+```bash
+npm -w server run sessions:rebuild
+```
 
 ## API reference
 
@@ -339,13 +355,25 @@ the same as in the database.
 - **Errors.** Every error body is `{ "error": "message" }`.
 - **Query parameters.** A parameter repeated in the query (`?page=1&page=2`)
   gets a `400`.
-- **Filters.** The read endpoints take the dashboard's filter bar as optional
-  parameters: `from` and `to` (ISO 8601 instants; `from` inclusive, `to`
-  exclusive) and `devices` (a comma-separated subset of `desktop,tablet,mobile`).
-  `GET /api/sessions` and `GET /api/overview` keep sessions that **started** in
-  the range on those devices; `GET /api/pages` counts the events in the range on
-  those devices; `GET /api/heatmap` takes the range only, since its own `device`
-  picks the layout. Without them, every endpoint behaves as before.
+- **Segment filters.** The read endpoints (except a single journey) take the
+  dashboard's filter bar as optional parameters, combined with AND. A segment
+  is a set of sessions: `GET /api/sessions` and `GET /api/overview` describe
+  those sessions, and `GET /api/pages` and `GET /api/heatmap` count only their
+  events. Without filters, every endpoint covers everything.
+
+| Parameter | Value |
+|---|---|
+| `from`, `to` | ISO 8601 instants: sessions that **started** in `[from, to)` |
+| `devices` | Comma-separated: `desktop`, `tablet`, `mobile` (a session's device is its first event's) |
+| `browsers` | Comma-separated: `Chrome`, `Safari`, `Firefox`, `Edge`, `Samsung Internet`, `Opera`, `Other` |
+| `os` | Comma-separated: `Windows`, `macOS`, `iOS`, `Android`, `ChromeOS`, `Linux`, `Other` |
+| `countries` | Comma-separated two-letter codes; `unknown` matches sessions without one |
+| `referrers` | Comma-separated hosts of referring sites, without `www.`; `direct` matches sessions without one |
+| `utm_source`, `utm_medium`, `utm_campaign` | One exact value each, from the landing page's URL (campaign names may contain commas) |
+| `entry_page`, `exit_page`, `visited_page` | One page URL each, normalized like `page_url` |
+| `min_duration`, `max_duration` | Seconds, inclusive |
+| `min_pages`, `max_pages` | Page views, inclusive |
+| `min_clicks`, `max_clicks` | Clicks, inclusive |
 - **Rate limit.** `POST /api/events` allows 120 requests a minute per client.
   Responses carry `RateLimit` and `RateLimit-Policy` headers, and a client over
   the limit gets `429` with a `Retry-After` header. The read endpoints aren't
@@ -354,11 +382,12 @@ the same as in the database.
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/api/events` | Receive and store events |
-| `GET` | `/api/sessions` | Sessions with event counts |
+| `GET` | `/api/sessions` | The segment's sessions, with counts and attributes |
 | `GET` | `/api/sessions/:id/events` | One session's events, in order |
 | `GET` | `/api/pages` | Every tracked page, for the heatmap's page picker |
 | `GET` | `/api/heatmap` | Click positions on one page |
-| `GET` | `/api/overview` | Headline numbers, sessions per day, top pages and devices for a segment |
+| `GET` | `/api/overview` | Headline numbers, sessions per day, top pages, and the split by device, browser, country and source for a segment |
+| `GET` | `/api/filters` | The values the filter menus offer, with session counts |
 
 The server also serves `GET /health` (`{ "ok": true }`), `GET /tracker.js` and
 the demo shop at `/demo/`.
@@ -407,9 +436,11 @@ Unknown fields are dropped and long strings are truncated.
 |---|---|---|
 | `page` | `1` | |
 | `limit` | `20` | 1 to 100; out-of-range values are clamped |
+| Segment filters | | See above |
 
-Sorted by most recent activity. `device` is the device of the session's first
-event.
+Sorted by most recent activity. `device`, `browser`, `os`, `country` and
+the traffic fields describe the session's first event. `source` is
+`utm_source`, else `referrer`, else `Direct`. A missing value is `null`.
 
 ```json
 {
@@ -423,8 +454,17 @@ event.
       "last_seen": "2026-10-13T05:06:05.388Z",
       "duration_ms": 25246,
       "entry_page": "http://localhost:4000/demo",
+      "exit_page": "http://localhost:4000/demo/about.html",
       "pages_visited": 3,
-      "device": "desktop"
+      "device": "desktop",
+      "browser": "Chrome",
+      "os": "macOS",
+      "country": "IN",
+      "referrer": "google.com",
+      "utm_source": null,
+      "utm_medium": null,
+      "utm_campaign": null,
+      "source": "google.com"
     }
   ],
   "page": 1,
@@ -437,11 +477,13 @@ event.
 
 All of the session's events, oldest first. Ties are broken by `_id`, so events
 from the same millisecond keep their insertion order. An id in the wrong
-format gets `400`, and an unknown session gets `404`.
+format gets `400`, and an unknown session gets `404`. `session` is the same
+summary as a row of `GET /api/sessions` (shortened here).
 
 ```json
 {
   "session_id": "seed_jzsqovvli6m0",
+  "session": { "session_id": "seed_jzsqovvli6m0", "browser": "Chrome", "os": "Windows", "country": "US", "source": "Direct" },
   "events": [
     {
       "_id": "6acd602016277a5f837f5f6a",
@@ -482,7 +524,8 @@ format gets `400`, and an unknown session gets `404`.
 
 ### `GET /api/pages`
 
-Every tracked page, most-clicked first.
+Every page the segment's sessions saw, most-clicked first. Takes the segment
+filters.
 
 ```json
 {
@@ -499,7 +542,8 @@ Every tracked page, most-clicked first.
 | Parameter | Default | Notes |
 |---|---|---|
 | `page` | required | A page URL. It is normalized the same way as stored events, so `/demo/index.html?utm_source=x` finds `/demo`. |
-| `device` | `all` | `all`, `desktop`, `tablet` or `mobile` |
+| `device` | `all` | `all`, `desktop`, `tablet` or `mobile`: the layout to draw, by the device of each click |
+| Segment filters | | See above. Only the matching sessions' clicks count |
 
 Returns the newest 5000 clicks at most. `total_clicks` is the uncapped count.
 Each click carries only the fields the heatmap needs.
@@ -518,15 +562,16 @@ Each click carries only the fields the heatmap needs.
 
 ### `GET /api/overview`
 
-Takes the filters above. Without `to`, the range ends now.
+Takes the segment filters. Without `to`, the range ends now.
 
 | Field | Meaning |
 |---|---|
 | `totals` | Sessions that started in the range: sessions, page views, clicks, average duration, pages per session, and bounce rate (the share of sessions with at most one page view, 0–1) |
 | `previous` | The same numbers for the period of equal length just before `from`; `null` without `from` (all time) |
 | `series` | Sessions per UTC day, with days without sessions filled in as 0 |
-| `top_pages` | The five pages with the most page views in the range |
+| `top_pages` | The five pages with the most page views by those sessions |
 | `devices` | Sessions per device (a session's device is its first event's) |
+| `browsers`, `countries`, `sources` | The five most common values with their sessions; a `null` country means none was recorded |
 
 ```json
 {
@@ -545,16 +590,42 @@ Takes the filters above. Without `to`, the range ends now.
     { "device": "desktop", "sessions": 16 },
     { "device": "mobile", "sessions": 13 },
     { "device": "tablet", "sessions": 8 }
-  ]
+  ],
+  "browsers": [{ "value": "Chrome", "sessions": 21 }, { "value": "Safari", "sessions": 16 }],
+  "countries": [{ "value": "IN", "sessions": 12 }, { "value": "US", "sessions": 9 }],
+  "sources": [{ "value": "Direct", "sessions": 13 }, { "value": "google.com", "sessions": 11 }]
 }
 ```
 
-The series is shortened here; the response has one entry per day.
+The series and lists are shortened here; the response has one series entry
+per day.
+
+### `GET /api/filters`
+
+The values that the sessions which started in the range actually have, with
+how many sessions have each, most common first (at most 100 per list). Takes
+`from` and `to` only, so choosing one filter doesn't empty the other menus.
+
+```json
+{
+  "browsers": [{ "value": "Chrome", "sessions": 29 }, { "value": "Safari", "sessions": 19 }],
+  "os": [{ "value": "macOS", "sessions": 17 }, { "value": "iOS", "sessions": 16 }],
+  "countries": [{ "value": "IN", "sessions": 14 }, { "value": "unknown", "sessions": 2 }],
+  "referrers": [{ "value": "direct", "sessions": 28 }, { "value": "google.com", "sessions": 13 }],
+  "utm_source": [{ "value": "newsletter", "sessions": 8 }],
+  "utm_medium": [{ "value": "email", "sessions": 8 }],
+  "utm_campaign": [{ "value": "october-beans", "sessions": 8 }],
+  "entry_pages": [{ "value": "http://localhost:4000/demo", "sessions": 23 }],
+  "exit_pages": [{ "value": "http://localhost:4000/demo/products.html", "sessions": 20 }],
+  "pages": [{ "value": "http://localhost:4000/demo/products.html", "sessions": 31 }]
+}
+```
 
 ## Data model and indexes
 
-All data lives in one collection, `events`, with one document per event
-([`server/src/models/Event.js`](server/src/models/Event.js)):
+Events are the source of truth: one document per event in `events`
+([`server/src/models/Event.js`](server/src/models/Event.js)). The `sessions`
+collection summarizes them, one document per session, for the filters.
 
 | Field | Type | Notes |
 |---|---|---|
@@ -569,21 +640,39 @@ All data lives in one collection, `events`, with one document per event
 | `device` | `mobile` \| `tablet` \| `desktop` | Derived on the server from `viewport_w`: under 768 is mobile, under 1024 is tablet. Never taken from the client. |
 | `referrer` | string | Optional |
 | `user_agent` | string | From the request header, not the body |
+| `country` | string | Two letters, from `COUNTRY_HEADER` when it is set. Never from the body |
 
 | Index | Used by |
 |---|---|
-| `{ session_id: 1, timestamp: 1 }` | The sessions list (its `$group` walks this index in order), a session's journey, and the seed script's `--reset` (an anchored `^seed_` prefix match) |
+| `{ session_id: 1, timestamp: 1 }` | Rebuilding a session's summary, a session's journey, the events of a segment's sessions (top pages), and the seed script's `--reset` (an anchored `^seed_` prefix match) |
 | `{ page_url: 1, type: 1, device: 1 }` | The heatmap query and its count, and the pages list |
 | `{ timestamp: -1 }` | No current endpoint. It is there for time-range queries, such as recent activity or a retention job |
 
-Mongoose's automatic index builds are off. The API builds the indexes with
-`Event.createIndexes()` at startup, before it starts listening, so they
-exist before the first query. Unlike `syncIndexes()`, this never drops an
-index created outside the schema.
+`sessions` ([`server/src/models/Session.js`](server/src/models/Session.js))
+is rebuilt from a session's events every time a batch for it arrives:
 
-Sessions are not stored separately: the list is aggregated from the events at
-read time. That stays simple and is always consistent, and it's fine at this
-scale. See the trade-offs below.
+| Field | Notes |
+|---|---|
+| `session_id` | Unique |
+| `first_seen`, `last_seen`, `duration_ms` | From the events' client timestamps |
+| `event_count`, `page_views`, `clicks` | |
+| `pages`, `entry_page`, `exit_page` | Normalized page URLs; `pages` in the order first visited |
+| `device`, `browser`, `os`, `country` | From the first event (country: the first event that has one). Browser and OS come from the user agent ([`lib/userAgent.js`](server/src/lib/userAgent.js)) |
+| `referrer` | The referring site's host without `www.`, only when it is another site |
+| `utm_source`, `utm_medium`, `utm_campaign` | From the landing page's URL |
+| `source` | `utm_source`, else `referrer`, else `Direct` |
+
+| Index | Used by |
+|---|---|
+| `{ session_id: 1 }`, unique | Writing a summary; a journey's `session` |
+| `{ first_seen: -1 }` | The segment's date range, on every read endpoint |
+| `{ last_seen: -1, session_id: 1 }` | The sessions list, most recent first |
+
+Mongoose's automatic index builds are off. The API builds the indexes with
+`createIndexes()` at startup, before it starts listening, so they exist
+before the first query. Unlike `syncIndexes()`, this never drops an index
+created outside the schema. On its first start with an empty `sessions`
+collection, the API then builds it from the events.
 
 ## Assumptions and trade-offs
 
@@ -632,9 +721,24 @@ scale. See the trade-offs below.
 
 **Backend and data**
 
-- One `events` collection, with sessions aggregated at read time. At larger
-  scale, a `sessions` collection updated on ingest, or a periodic
-  pre-aggregation, would replace the `$group` over all events.
+- Sessions are summarized on ingest by recomputing each session in the batch
+  from all its events, not by updating counters. That costs one indexed read
+  of a few dozen events per batch, and in return ingest, the startup backfill
+  and the seed share one code path, and a lost write corrects itself with the
+  session's next batch. A summary built from fewer events never replaces one
+  built from more, so two batches of one session arriving together are safe.
+- Event views (heatmap, page counts, top pages) apply a segment by looking up
+  its session ids and counting events with `session_id` in that list. Events
+  are never rewritten, and every tab means the same sessions. The list grows
+  with traffic; beyond tens of thousands of sessions per segment, copying the
+  filterable fields onto events or pre-aggregating would take over.
+- Country comes only from a header the hosting edge sets (`COUNTRY_HEADER`),
+  with no IP lookup and no stored IP. Render's own docs don't promise
+  Cloudflare's `CF-IPCountry`; without it, sessions have no country.
+- Browser and OS come from a short built-in user-agent parser instead of a
+  library. It knows the main browsers and systems; Chromium browsers that
+  don't name themselves (Brave) count as Chrome, and iPads in desktop mode
+  as macOS.
 - There is no authentication, no multi-site `site_id` and no API keys, and the
   ingestion endpoint is open to any origin. The read endpoints are limited to
   the dashboard's origin by CORS. That stops other websites from reading the
@@ -680,8 +784,8 @@ scale. See the trade-offs below.
 - **Better heatmaps:** store each click relative to its element (a CSS
   selector plus an offset), so clicks map onto any layout. Also scroll-depth
   events.
-- **Scale:** a `sessions` collection maintained on ingest, and a TTL index for
-  data retention.
+- **Retention:** a TTL index on events, with their session summaries removed
+  alongside.
 - **Tracker:** single-page-app support (`history.pushState` and `popstate`).
 - **Live updates:** server-sent events or websockets instead of polling.
 - **Tests:** a Playwright smoke test of the dashboard in a real browser.
@@ -698,16 +802,16 @@ scale. See the trade-offs below.
 │   └── images/                 README screenshots
 ├── server/                     Express API (ESM JavaScript, Node 22.12+)
 │   ├── src/
-│   │   ├── index.js            connect, build indexes, listen; graceful shutdown
+│   │   ├── index.js            connect, build indexes, build sessions once, listen; graceful shutdown
 │   │   ├── app.js              helmet, CORS, static files, routers
-│   │   ├── models/Event.js     schema and the 3 indexes
-│   │   ├── lib/                normalizeUrl, device, validateEvent
+│   │   ├── models/             Event (3 indexes), Session (3 indexes)
+│   │   ├── lib/                normalizeUrl, device, validateEvent, userAgent, sessionStore, filters (the segment)
 │   │   ├── middleware/         CORS, rate limit, errors
-│   │   └── routes/             events, sessions, pages, heatmap
+│   │   └── routes/             events, sessions, pages, heatmap, overview, filterOptions
 │   ├── public/
 │   │   ├── tracker.js          the tracking script, served as is at /tracker.js
 │   │   └── demo/               the demo shop, served at /demo/
-│   ├── scripts/seed.js
+│   ├── scripts/                seed.js, rebuild-sessions.js
 │   └── test/                   Vitest: API (supertest + in-memory MongoDB) and tracker (happy-dom)
 └── dashboard/                  Next.js 16 (App Router, TypeScript, Tailwind 4, SWR)
     ├── vercel.json             install command for Vercel

@@ -25,4 +25,6 @@ export const config = {
   // A header the hosting edge overwrites with the client's address (Render: true-client-ip).
   // Only set it behind such an edge: anywhere else, clients could send their own.
   clientIpHeader: process.env.CLIENT_IP_HEADER?.trim().toLowerCase() || null,
+  // A header the edge sets to the visitor's two-letter country (Cloudflare: cf-ipcountry). Same caveat.
+  countryHeader: process.env.COUNTRY_HEADER?.trim().toLowerCase() || null,
 };

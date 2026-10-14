@@ -1,3 +1,4 @@
+import { rebuildSessions } from '../src/lib/sessionStore.js';
 import { Event } from '../src/models/Event.js';
 
 export const BASE_TIME = Date.parse('2026-10-12T10:00:00.000Z');
@@ -26,4 +27,9 @@ export function eventDoc({ at = 0, page_url = HOME, ...overrides } = {}) {
 
 export const clickDoc = (overrides = {}) => eventDoc({ type: 'click', x: 100, y: 200, ...overrides });
 
-export const insert = (...docs) => Event.insertMany(docs.flat());
+/** Stores events and builds their sessions, as POST /api/events does. */
+export async function insert(...docs) {
+  const stored = await Event.insertMany(docs.flat());
+  await rebuildSessions(stored.map((doc) => doc.session_id));
+  return stored;
+}

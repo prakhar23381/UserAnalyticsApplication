@@ -13,6 +13,7 @@ import { deviceFor } from '../src/lib/device.js';
 import { normalizeUrl } from '../src/lib/normalizeUrl.js';
 import { SESSION_ID_RE, validateEvent } from '../src/lib/validateEvent.js';
 import { Event } from '../src/models/Event.js';
+import { Session } from '../src/models/Session.js';
 import { eventDoc, insert } from './factories.js';
 
 const NOW = Date.parse('2026-10-13T12:00:00.000Z');
@@ -143,6 +144,17 @@ describe('toDocuments', () => {
     });
   });
 
+  it('varies browsers, countries and campaigns, as the segment filters need', async () => {
+    await seed(documents);
+    const sessions = await Session.find().lean();
+    expect(new Set(sessions.map((s) => s.browser)).size).toBeGreaterThanOrEqual(5);
+    expect(new Set(sessions.map((s) => s.os)).size).toBeGreaterThanOrEqual(4);
+    expect(new Set(sessions.map((s) => s.country)).size).toBeGreaterThanOrEqual(6);
+    expect(sessions.some((s) => s.country === undefined)).toBe(true);
+    expect(new Set(sessions.map((s) => s.utm_campaign).filter(Boolean))).toEqual(new Set(['october-beans', 'autumn-launch']));
+    expect(sessions.every((s) => s.browser !== 'Other' && s.os !== 'Other')).toBe(true);
+  });
+
   it('lands some visits on URL variants that normalize to the same page', () => {
     expect(documents.some((doc) => doc.raw_url.includes('?utm_source='))).toBe(true);
     expect(documents.some((doc) => doc.raw_url.endsWith('/demo/index.html'))).toBe(true);
@@ -155,8 +167,9 @@ describe('seed', () => {
 
   it('adds the documents and leaves earlier seeded sessions alone', async () => {
     await insert(eventDoc({ session_id: 'seed_earlier' }));
-    expect(await seed(documents)).toEqual({ deleted: 0, inserted: documents.length });
+    expect(await seed(documents)).toEqual({ deleted: 0, inserted: documents.length, sessions: 3 });
     expect(await Event.countDocuments()).toBe(documents.length + 1);
+    expect(await Session.countDocuments({ session_id: /^seed_/ })).toBe(4);
   });
 
   it('with reset, deletes earlier seeded sessions and keeps real ones', async () => {
@@ -165,8 +178,10 @@ describe('seed', () => {
       eventDoc({ session_id: 'real-visitor' }),
       eventDoc({ session_id: 'not_seed_1' }),
     );
-    expect(await seed(documents, { reset: true })).toEqual({ deleted: 1, inserted: documents.length });
+    expect(await seed(documents, { reset: true })).toEqual({ deleted: 1, inserted: documents.length, sessions: 3 });
     expect(await Event.exists({ session_id: 'seed_earlier' })).toBeNull();
+    expect(await Session.exists({ session_id: 'seed_earlier' })).toBeNull();
+    expect(await Session.countDocuments({ session_id: { $in: ['real-visitor', 'not_seed_1'] } })).toBe(2);
     expect(await Event.countDocuments({ session_id: { $in: ['real-visitor', 'not_seed_1'] } })).toBe(2);
     expect(await Event.countDocuments()).toBe(documents.length + 2);
   });

@@ -2,6 +2,29 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-15 — v2 M2a: sessions collection and the full segment (branch `v2`)
+- **`sessions` collection** (`models/Session.js`, 3 indexes): one summary per session, recomputed
+  from all its events after every ingest batch (`lib/sessionStore.js`, M2-D1a). A summary built from
+  fewer events never replaces one from more (guarded `replaceOne` + one retry on a duplicate key), so
+  concurrent batches are safe; a session whose events are gone is removed. Built once at startup when
+  empty (`ensureSessions`, M2-D2a); `npm -w server run sessions:rebuild` recomputes all.
+- **Enrichment:** `lib/userAgent.js` (7 browsers, 7 systems incl. Other); `country` on events from the
+  optional `COUNTRY_HEADER` (XX and T1 dropped); referrer host without `www.` (external only);
+  UTM source/medium/campaign from the landing URL; `source` = UTM source, else referrer, else Direct.
+- **Segment parser** (`lib/filters.js`): browsers, os, countries (`unknown`), referrers (`direct`),
+  UTM values, entry/exit/visited page, min/max duration, pages, clicks, on top of from/to/devices.
+  Sessions list and Overview read `sessions`; pages, heatmap and top pages count the matching
+  sessions' events (`session_id ∈ ids`, M2-D3a), so a date range there now means sessions that
+  started in it. Overview adds browsers, countries, sources; the journey adds `session`.
+  New `GET /api/filters` (menu values with session counts, date range only).
+- **Seed:** countries, Firefox/Edge/Samsung Internet/Android tablet agents, UTM medium and campaign;
+  builds sessions; `--reset` also removes `seed_` summaries. Local DB rebuilt (48) and re-seeded (40).
+- **D5:** the live API answers through Cloudflare (`server: cloudflare`, `cf-ray` BOM), so
+  `CF-IPCountry` may arrive; `render.yaml` documents `COUNTRY_HEADER=cf-ipcountry`. Unverified until
+  M2a runs on Render.
+- Tests: server 241 (+63: userAgent, sessionStore, filterOptions, segment on every endpoint, ingest
+  country, seed). README: data model, segment parameters, `GET /api/filters`, trade-offs.
+
 ## 2026-10-15 — v2 M1b: filter bar and Overview (branch `v2`; closes M1)
 - **API (additive; old calls unchanged):** `server/src/lib/filters.js` parses `from`, `to`
   (ISO 8601, half-open) and `devices` (comma list), with 400s for bad values.

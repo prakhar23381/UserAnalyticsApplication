@@ -2,6 +2,7 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
 import { Event } from '../src/models/Event.js';
+import { Session } from '../src/models/Session.js';
 
 const app = createApp({ dashboardOrigins: ['http://localhost:3000'] });
 
@@ -65,6 +66,25 @@ describe('POST /api/events', () => {
     expect(stored.received_at.getFullYear()).not.toBe(2000);
     expect(stored.device).toBe('desktop');
     expect(stored.user_agent).not.toBe('spoofed');
+  });
+
+  it("builds the batch's sessions as soon as they're stored", async () => {
+    await post({ events: [event(), click({ timestamp: '2026-10-12T10:00:05.000Z' })] });
+    const session = await Session.findOne({ session_id: 's_123' }).lean();
+    expect(session).toMatchObject({ event_count: 2, clicks: 1, utm_source: 'ad', source: 'ad', duration_ms: 5000 });
+  });
+
+  it('stores the country from COUNTRY_HEADER when configured, never from the body', async () => {
+    const withHeader = createApp({ dashboardOrigins: [], countryHeader: 'cf-ipcountry' });
+    await request(withHeader).post('/api/events').set('CF-IPCountry', 'in').send(event({ session_id: 'a', country: 'FR' }));
+    await request(withHeader).post('/api/events').set('CF-IPCountry', 'XX').send(event({ session_id: 'b' }));
+    await request(withHeader).post('/api/events').set('CF-IPCountry', 'T1').send(event({ session_id: 'c' }));
+    // Without the setting, the header is ignored.
+    await post(event({ session_id: 'd' })).set('CF-IPCountry', 'DE');
+
+    const countries = Object.fromEntries((await Event.find().lean()).map((e) => [e.session_id, e.country ?? null]));
+    expect(countries).toEqual({ a: 'IN', b: null, c: null, d: null });
+    expect((await Session.findOne({ session_id: 'a' }).lean()).country).toBe('IN');
   });
 
   it('rejects a request with no valid events → 400', async () => {

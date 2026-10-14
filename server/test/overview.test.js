@@ -44,6 +44,9 @@ describe('GET /api/overview', () => {
         { device: 'desktop', sessions: 1 },
         { device: 'mobile', sessions: 1 },
       ],
+      browsers: [{ value: 'Other', sessions: 2 }], // the factories store no user agent
+      countries: [{ value: null, sessions: 2 }],
+      sources: [{ value: 'Direct', sessions: 2 }],
     });
   });
 

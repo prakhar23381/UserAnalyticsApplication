@@ -4,7 +4,8 @@ import helmet from 'helmet';
 import { ingestCors, readCors } from './middleware/cors.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { INGEST_LIMIT, ingestRateLimit } from './middleware/rateLimit.js';
-import eventsRouter from './routes/events.js';
+import { eventsRouter } from './routes/events.js';
+import filterOptionsRouter from './routes/filterOptions.js';
 import heatmapRouter from './routes/heatmap.js';
 import overviewRouter from './routes/overview.js';
 import pagesRouter from './routes/pages.js';
@@ -17,6 +18,7 @@ export function createApp({
   dashboardOrigins,
   isProduction = false,
   clientIpHeader = null,
+  countryHeader = null,
   ingestLimit = INGEST_LIMIT,
 }) {
   const app = express();
@@ -45,8 +47,8 @@ export function createApp({
   app.use(express.static(publicDir));
 
   // After CORS, so a browser can read the 429; before the router parses the tracker's text/plain body.
-  app.use('/api/events', ingestCors, ingestRateLimit(ingestLimit, { clientIpHeader }), eventsRouter);
-  app.use('/api', readCors(dashboardOrigins), sessionsRouter, pagesRouter, heatmapRouter, overviewRouter);
+  app.use('/api/events', ingestCors, ingestRateLimit(ingestLimit, { clientIpHeader }), eventsRouter({ countryHeader }));
+  app.use('/api', readCors(dashboardOrigins), sessionsRouter, pagesRouter, heatmapRouter, overviewRouter, filterOptionsRouter);
 
   app.use(notFound);
   app.use(errorHandler({ isProduction }));

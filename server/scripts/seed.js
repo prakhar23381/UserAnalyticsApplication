@@ -1,5 +1,6 @@
 // Fills the events collection with fake but realistic visits to the demo
-// store, so the dashboard has sessions and heatmaps to show.
+// store, so the dashboard has sessions and heatmaps to show, and builds their
+// sessions the way ingest does.
 //
 //   npm run seed                                   add 40 sessions to MONGODB_URI (server/.env)
 //   npm run seed -- --reset                        first delete earlier seeded sessions
@@ -11,8 +12,10 @@
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { connect, disconnect } from '../src/db.js';
+import { rebuildSessions } from '../src/lib/sessionStore.js';
 import { validateEvent } from '../src/lib/validateEvent.js';
 import { Event } from '../src/models/Event.js';
+import { Session } from '../src/models/Session.js';
 
 export const SEED_PREFIX = 'seed_';
 const SEED_ID_RE = /^seed_/; // anchored, so a delete uses the { session_id, timestamp } index
@@ -148,13 +151,17 @@ const USER_AGENTS = {
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0',
   ],
   tablet: [
     'Mozilla/5.0 (iPad; CPU OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (Linux; Android 14; SM-X710) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36',
   ],
   mobile: [
     'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1',
     'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/28.0 Chrome/130.0.0.0 Mobile Safari/537.36',
   ],
 };
 
@@ -164,12 +171,27 @@ const ENTRY_PAGES = [
   ['about', 15],
 ];
 
-// Where a visit comes from: a campaign tag in the landing URL and/or a referrer.
+// Where a visit comes from: campaign tags in the landing URL and/or a referrer.
 const SOURCES = [
-  [{ utm: null, referrer: undefined }, 35], // typed or bookmarked
-  [{ utm: null, referrer: 'https://www.google.com/' }, 35],
-  [{ utm: 'newsletter', referrer: undefined }, 15], // email clients send no referrer
-  [{ utm: 'instagram', referrer: 'https://l.instagram.com/' }, 15],
+  [{ utm: null, referrer: undefined }, 30], // typed or bookmarked
+  [{ utm: null, referrer: 'https://www.google.com/' }, 30],
+  [{ utm: null, referrer: 'https://duckduckgo.com/' }, 5],
+  // email clients send no referrer
+  [{ utm: { utm_source: 'newsletter', utm_medium: 'email', utm_campaign: 'october-beans' }, referrer: undefined }, 15],
+  [{ utm: { utm_source: 'instagram', utm_medium: 'social', utm_campaign: 'autumn-launch' }, referrer: 'https://l.instagram.com/' }, 15],
+  [{ utm: { utm_source: 'google', utm_medium: 'cpc', utm_campaign: 'autumn-launch' }, referrer: 'https://www.google.com/' }, 5],
+];
+
+// Where visitors are, as the edge's country header would say; null: not known.
+const COUNTRIES = [
+  ['IN', 30],
+  ['US', 22],
+  ['GB', 12],
+  ['DE', 9],
+  ['SG', 8],
+  ['CA', 7],
+  ['AU', 7],
+  [null, 5],
 ];
 
 // What a visitor clicks on each page, in order; `null` means they leave. A
@@ -243,7 +265,7 @@ function landingUrl(random, baseUrl, page, utm) {
   // /demo/index.html is the same page as /demo/ once normalizeUrl has run.
   const path = page === 'home' && random() < 0.2 ? '/demo/index.html' : PAGES[page];
   const url = new URL(path, baseUrl);
-  if (utm) url.searchParams.set('utm_source', utm);
+  for (const [key, value] of Object.entries(utm ?? {})) url.searchParams.set(key, value);
   return url.href;
 }
 
@@ -253,6 +275,7 @@ function generateSession(random, { baseUrl, now }) {
   const [viewport_w, viewport_h] = viewport;
   const agents = USER_AGENTS[device];
   const user_agent = agents[Math.floor(random() * agents.length)];
+  const country = weighted(random, COUNTRIES);
   const session_id =
     SEED_PREFIX + Array.from({ length: 12 }, () => ID_CHARS[Math.floor(random() * ID_CHARS.length)]).join('');
 
@@ -310,11 +333,11 @@ function generateSession(random, { baseUrl, now }) {
     url = new URL(PAGES[next], baseUrl).href;
   }
 
-  return { user_agent, events };
+  return { user_agent, country, events };
 }
 
 /**
- * Fake visits as the tracker would send them, one `{ user_agent, events }` per
+ * Fake visits as the tracker would send them, one `{ user_agent, country, events }` per
  * session, spread over the 7 days before `now`.
  */
 export function generateSessions({
@@ -328,26 +351,34 @@ export function generateSessions({
 
 /**
  * Shapes the sessions for storage the way POST /api/events does: validateEvent,
- * then the user agent (a request header there) and the server's receive time,
+ * then the user agent and country (request headers there) and the server's receive time,
  * a moment after the client's since the tracker batches. Throws on an event
  * validateEvent rejects: that is a bug in this script.
  */
 export function toDocuments(sessions) {
-  return sessions.flatMap(({ user_agent, events }) =>
+  return sessions.flatMap(({ user_agent, country, events }) =>
     events.map((event) => {
       const result = validateEvent(event);
       if (!result.ok) throw new Error(`validateEvent rejected a seeded event: ${result.error}`);
       const received_at = new Date(result.value.timestamp.getTime() + Math.round(between(Math.random, 100, 5000)));
-      return { ...result.value, user_agent, received_at };
+      return { ...result.value, user_agent, ...(country && { country }), received_at };
     }),
   );
 }
 
-/** Inserts the documents. With `reset`, first deletes every earlier seeded session and nothing else. */
+/**
+ * Inserts the documents and builds their sessions. With `reset`, first deletes
+ * every earlier seeded session (events and summary) and nothing else.
+ */
 export async function seed(documents, { reset = false } = {}) {
-  const deleted = reset ? (await Event.deleteMany({ session_id: SEED_ID_RE })).deletedCount : 0;
+  let deleted = 0;
+  if (reset) {
+    deleted = (await Event.deleteMany({ session_id: SEED_ID_RE })).deletedCount;
+    await Session.deleteMany({ session_id: SEED_ID_RE });
+  }
   await Event.insertMany(documents, { ordered: false, throwOnValidationError: true });
-  return { deleted, inserted: documents.length };
+  const sessions = await rebuildSessions(documents.map((doc) => doc.session_id));
+  return { deleted, inserted: documents.length, sessions };
 }
 
 /** True when every host in a mongodb:// URI is this machine. mongodb+srv:// is always remote. */
@@ -388,10 +419,12 @@ async function main() {
   console.log(`Seeding ${target}: ${count} sessions, ${documents.length} events, pages on ${baseUrl}`);
   await connect(config.mongodbUri);
   try {
-    await Event.createIndexes(); // autoIndex is off; the API builds these at startup too
-    const { deleted, inserted } = await seed(documents, { reset: values.reset });
+    // autoIndex is off; the API builds these at startup too
+    await Event.createIndexes();
+    await Session.createIndexes();
+    const { deleted, inserted, sessions } = await seed(documents, { reset: values.reset });
     if (values.reset) console.log(`Deleted ${deleted} earlier seeded events`);
-    console.log(`Inserted ${inserted} events`);
+    console.log(`Inserted ${inserted} events and built ${sessions} sessions`);
   } finally {
     await disconnect();
   }

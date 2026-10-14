@@ -67,6 +67,7 @@ npm test                              # server tests: Vitest projects `api` + `t
 npm test -- --project tracker         # one Vitest project only (args are forwarded)
 npm -w server run dev                 # API only (node --watch); also serves /tracker.js and /demo/
 npm -w server run seed -- --reset     # wipe + seed fake sessions — local DB only (§10)
+npm -w server run sessions:rebuild    # recompute the sessions collection from events (local; remote needs --allow-remote + §10)
 ```
 
 Local URLs: demo `http://localhost:4000/demo/` · dashboard `http://localhost:3000` · UI lab `http://localhost:3000/lab` (local only) · health `http://localhost:4000/health`.
@@ -121,18 +122,20 @@ Toolchain facts that are easy to get wrong:
 ├── server/                       Express API (ESM, Node >=22.12)
 │   ├── package.json  vitest.config.js  .env.example
 │   ├── src/
-│   │   ├── index.js              boot: connect → Event.createIndexes() → listen; SIGTERM shutdown
+│   │   ├── index.js              boot: connect → createIndexes() → ensureSessions() → listen; SIGTERM shutdown
 │   │   ├── app.js                createApp({ dashboardOrigins, isProduction }); helmet, static, routers
 │   │   ├── config.js  db.js      env (fails fast without MONGODB_URI); mongoose connect/disconnect
-│   │   ├── models/Event.js       schema + the 3 indexes (autoIndex off)
-│   │   ├── lib/                  normalizeUrl.js, device.js, validateEvent.js, filters.js (from/to/devices on reads)
+│   │   ├── models/               Event.js (3 indexes), Session.js (3 indexes; derived from events) — autoIndex off
+│   │   ├── lib/                  normalizeUrl.js, device.js, validateEvent.js, userAgent.js, sessionStore.js
+│   │   │                         (rebuildSessions, ensureSessions), filters.js (the segment parser)
 │   │   ├── middleware/           cors.js (ingestCors, readCors), rateLimit.js (POST /api/events), errorHandler.js
-│   │   └── routes/               events.js, sessions.js, pages.js, heatmap.js, overview.js
+│   │   └── routes/               events.js, sessions.js, pages.js, heatmap.js, overview.js, filterOptions.js
 │   ├── .env                      local only, git-ignored (created from .env.example)
 │   ├── public/
 │   │   ├── tracker.js            the tracking script, served as-is at /tracker.js
 │   │   └── demo/                 index.html, products.html, about.html, demo.css, demo.js (served at /demo/)
-│   ├── scripts/seed.js           `npm run seed`: fake demo sessions; `--reset` deletes only `seed_` sessions
+│   ├── scripts/                  seed.js (`npm run seed`; `--reset` deletes only `seed_` sessions),
+│   │                             rebuild-sessions.js (`npm -w server run sessions:rebuild`)
 │   └── test/                     globalSetup.js, setup.js, factories.js, *.test.js (tracker.test.js: happy-dom)
 ├── dashboard/                    Next.js 16 (App Router, TypeScript, Tailwind 4, SWR)
 │   ├── package.json  next.config.ts  tsconfig.json  eslint.config.mjs
@@ -214,8 +217,17 @@ trade-offs in the README instead.
 - **Query params** reaching Mongo are checked to be plain strings first
   (Express 5 turns a repeated param into an array).
 - **Indexes:** every query on `events` must hit an index
-  (`{session_id, timestamp}`, `{page_url, type, device}`, `{timestamp}`). If a
-  new query doesn't, add an index or ask.
+  (`{session_id, timestamp}`, `{page_url, type, device}`, `{timestamp}`), and
+  every query on `sessions` too (`{session_id}` unique, `{first_seen}`,
+  `{last_seen, session_id}`). If a new query doesn't, add an index or ask.
+- **`sessions` is derived:** written only by `lib/sessionStore.js`
+  (`rebuildSessions`), from the session's events. Any code that inserts or
+  deletes events (ingest, seed, tests' `insert`) must rebuild those sessions.
+  Events are the source of truth; never edit a session document by hand.
+- **Segment:** every read endpoint parses filters with `lib/filters.js`
+  (`parseFilters`); event views count only the matching sessions' events
+  (`eventMatch`). `country` comes only from `COUNTRY_HEADER`, never the body;
+  IP addresses are never stored.
 
 ## 5) Development Workflow (Mandatory)
 No source file changes without passing through these phases in order.

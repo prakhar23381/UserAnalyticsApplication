@@ -143,3 +143,40 @@ Each milestone ships with tests (tracker, API, `lib/`), seed updates, README cha
   is "View sessions", the journeys.
 - **Accounts and login**: out of scope (CLAUDE.md §3), which is why segments live in
   the browser (D3).
+
+## M2 in detail (approved 2026-10-15)
+
+Three commits on `v2`: **M2a** server, **M2b** dashboard filters, **M2c** saved
+segments, default segment and watchlist.
+
+| # | Decision | Choice |
+|---|---|---|
+| M2-D1 | Keeping `sessions` current | Each session in an ingest batch is **recomputed from its events**; the same function serves ingest, backfill and seed. A recompute with fewer events never overwrites one with more |
+| M2-D2 | Backfill | **At server start**, before listening, when `sessions` is empty but events exist; `npm -w server run sessions:rebuild` rebuilds everything |
+| M2-D3 | Filters on event-based views | Find the matching session ids in `sessions`, then count only their events. A date range there means "events of sessions that started in the range" |
+| M2-D4 | Saved segments | Store the filters **without the date range** |
+
+**Session document:** `session_id` (unique), `first_seen`, `last_seen`,
+`duration_ms`, `event_count`, `page_views`, `clicks`, `pages`, `entry_page`,
+`exit_page`, `device`, `browser`, `os`, `country`, `referrer` (external host
+without `www.`), `utm_source`, `utm_medium`, `utm_campaign`, `source` (UTM
+source, else referrer, else `Direct`). Indexes: `session_id` unique,
+`first_seen`, `last_seen`.
+
+**Filter parameters** (all optional, combined with AND):
+
+| Parameter | Value |
+|---|---|
+| `from`, `to`, `devices` | as in M1 |
+| `browsers`, `os`, `countries`, `referrers` | comma-separated; `unknown` / `direct` match a missing value |
+| `utm_source`, `utm_medium`, `utm_campaign` | one exact value each |
+| `entry_page`, `exit_page`, `visited_page` | one page URL each, normalized |
+| `min_duration`, `max_duration` (s), `min_pages`, `max_pages`, `min_clicks`, `max_clicks` | whole numbers, inclusive |
+
+**Country (D5):** optional env `COUNTRY_HEADER`, stored on each event as
+`country`. The live API answers through Cloudflare (`server: cloudflare`,
+`cf-ray`), so `CF-IPCountry` may reach Render; checked with a real visit once
+M2a runs there.
+
+**New endpoint:** `GET /api/filters?from=&to=`: the values in the range with
+session counts, for the filter menus.

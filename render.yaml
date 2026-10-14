@@ -21,6 +21,10 @@ services:
       # X-Forwarded-For keeps whatever the client sent.
       - key: CLIENT_IP_HEADER
         value: true-client-ip
+      # The visitor's country from Cloudflare, in front of Render. Not in Render's docs:
+      # if the header doesn't arrive, sessions just have no country.
+      - key: COUNTRY_HEADER
+        value: cf-ipcountry
       # Secrets and deployment-specific values: Render asks for them when the
       # Blueprint is created, and they never live in this file.
       - key: MONGODB_URI

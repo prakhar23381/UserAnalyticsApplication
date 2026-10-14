@@ -31,6 +31,7 @@ const eventSchema = new mongoose.Schema(
     device: { type: String, enum: DEVICES }, // derived from viewport_w on the server
     referrer: String,
     user_agent: String, // from the request header, not the client body
+    country: String, // two letters from COUNTRY_HEADER (set by the host's edge), never from the body
   },
   {
     versionKey: false,

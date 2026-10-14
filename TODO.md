@@ -132,26 +132,17 @@ Done, including the phone/tablet `y` fix it found (see `STATUS_LOG.md`); rerun w
 
 ## 9. Phase 7 — Deploy
 
-Config is in the repo (`render.yaml`, `dashboard/vercel.json`; README "Deployment"). Names: Render `useranalytics-api`, Vercel `useranalytics-dashboard`, region Singapore. Approved 2026-10-14: two pushes to `main` (before step 3 and at step 6).
+Deployed and smoke-tested 2026-10-14 (see `STATUS_LOG.md`). Only seeding remains.
 
-- [ ] **[S]** (agent) Secret scan of the whole history, then the first push of `main`
-- [ ] **[S]** (user) **Atlas**: M0 cluster on AWS Singapore (`ap-southeast-1`) → database user → Network Access `0.0.0.0/0` → SRV connection string with `/causalfunnel` as the database. The URI stays out of the chat.
-- [ ] **[S]** (user) **Render**: New → Blueprint → this repo; enter `MONGODB_URI` and `DASHBOARD_ORIGIN=https://useranalytics-dashboard.vercel.app` (or whatever origin Vercel gives). Report the service URL.
-  - free tier sleeps → first request ~30–50 s (in the README)
-- [ ] **[S]** (user) **Vercel**: import the repo, Root Directory `dashboard`, Node.js 22.x, `NEXT_PUBLIC_API_URL=<Render URL>`. Report the URL. Check the build log for Node 22 and the custom install command; if it uses Node 24, add `"engines": { "node": "^22.12.0" }` to `dashboard/package.json`.
-  - if Vercel added a suffix to the name, fix `DASHBOARD_ORIGIN` on Render
-- [ ] **[S]** (agent) Set `PRODUCTION_DASHBOARD_URL` in `server/public/demo/demo.js` and the README live links (TODO §10); second push of `main`
-- [ ] **[S]** (agent) Production smoke test: health; `/tracker.js` CORP; CORS allowed for the dashboard and refused for others; CSP `frame-ancestors`; a headless Brave visit is stored and shows on the live dashboard; heatmap iframe loads; `RateLimit` headers, and a spoofed `True-Client-IP` / `X-Forwarded-For` doesn't change the bucket
-- [ ] **[S]** (user, double confirmation) Seed production once:
-  `MONGODB_URI='<atlas uri>' npm run seed -- --base-url https://<render url> --allow-remote`
+- [ ] **[S]** (double confirmation, CLAUDE.md §10) Seed production once:
+  `MONGODB_URI='<atlas uri>' npm run seed -- --base-url https://useranalytics-api.onrender.com --allow-remote`
+- [ ] **[S]** (user, after submitting) Rotate the Atlas database user's password (it was pasted into the chat) and update `MONGODB_URI` on Render
 
 ---
 
 ## 10. Phase 8 — README
 
-Done except the item that needs Phase 7 (see `STATUS_LOG.md`).
-
-- [ ] **[S]** Live links in `README.md`: Demo site · Dashboard · API health. Add them under the summary once Phase 7 is deployed; change "Hosting (target)" in the tech stack table to the real hosts.
+Done, including the live links (see `STATUS_LOG.md`).
 
 ---
 

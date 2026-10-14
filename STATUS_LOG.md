@@ -2,6 +2,64 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-14 — Phase 7: live and smoke-tested
+- **Atlas** (user): M0 `Cluster0` on AWS Singapore, a database user, database
+  `causalfunnel`. A read-only ping from this Mac with the user's URI
+  succeeded. The URI is in Render's environment only, never in a file,
+  commit or log.
+- **Render** (user): the Blueprint flow asked for a credit card, so the user
+  created a free **Web Service** `useranalytics-api` by hand with the
+  `render.yaml` settings. It is at https://useranalytics-api.onrender.com, and
+  `/health` first answered 200 at 17:22 UTC. README "Deployment" now notes
+  this route.
+- **HTTP smoke test** (`scratch/prod-smoke.sh`, 10/10): `/health`;
+  `/tracker.js` 200 with CORP `cross-origin`; `/demo/` CSP
+  `frame-ancestors 'self' https://useranalytics-dashboard.vercel.app` and
+  `upgrade-insecure-requests`; reads allowed for the dashboard origin and
+  refused for another; `RateLimit` headers, and with a different spoofed
+  `True-Client-IP` / `X-Forwarded-For` on each request the remaining count
+  still fell 119 → 118 → 117 (one bucket, keyed on the real client); the
+  dashboard's `/sessions` returns 200.
+- **Browser** (headless Brave, fresh profile): a visit to the live demo
+  (`?utm_source=smoke`) plus a click on "Shop now" was stored in Atlas as
+  1 session, 3 events, with no console or network errors. The live
+  dashboard showed it in the sessions list (1 row), in the journey (2
+  visits) and on the Home heatmap: the demo page renders inside the iframe
+  and the dot sits on "Shop now". After the previews the count was still
+  1 session, 3 events, so preview visits aren't recorded. The demo footer's
+  "View dashboard" link is visible and points at the Vercel dashboard.
+- Production is not seeded yet; the smoke-test visit is its only session.
+
+## 2026-10-14 — Phase 7: pushes and the Vercel dashboard
+- `0e0b415` `chore(deploy)`: `render.yaml` (Blueprint for `useranalytics-api`:
+  repo root, `npm ci --omit=dev -w server`, `node server/src/index.js`,
+  `/health`, free, Singapore, `NODE_VERSION=22`, `NODE_ENV=production`,
+  `CLIENT_IP_HEADER=true-client-ip`; `MONGODB_URI` and `DASHBOARD_ORIGIN` are
+  `sync: false`) and `dashboard/vercel.json` (`npm ci -w dashboard
+  --include=dev`). Both were tested locally first in a throwaway clone
+  (`scratch/deploy-check`): the server-only install is 16 MB and boots in
+  production mode; the dashboard-only install builds. README "Deployment"
+  section added.
+- **First push** (user-approved): a secret scan of all 24 commits found only
+  the fake URIs in `seed.test.js`. HTTPS push has no stored credentials, so
+  the push went over SSH to the same repo; `main` tracks `origin/main`.
+- **Vercel** (user asked the agent to do it): the Vercel CLI was already
+  signed in (`prakhar23381-9369`), and the account's GitHub app was
+  installed. The project `useranalytics-dashboard` was created with
+  `vercel api` (POST `/v11/projects`: Next.js, root `dashboard`, linked to
+  `prakhar23381/UserAnalyticsApplication`, `NEXT_PUBLIC_API_URL` for
+  production and preview), then PATCHed to Node 22.x. The auto-mode
+  classifier blocked this until the user approved it explicitly.
+- `f678a6f` `docs`: README live links, "Hosting" row; `demo.js`
+  `PRODUCTION_DASHBOARD_URL = https://useranalytics-dashboard.vercel.app`.
+  **Second push** (approved) triggered the first production build: the
+  custom install ran (411 packages, 19 s), Next 16.4 compiled, and the build
+  finished in 34 s. The production alias is `useranalytics-dashboard.vercel.app`,
+  publicly reachable (no login wall), with the API URL inlined in the
+  client bundle.
+- Still open: Atlas and Render (user), the production smoke test, and
+  seeding production.
+
 ## 2026-10-14 — Server: rate limit on `POST /api/events`
 - Closes the TODO §3 stretch item. `express-rate-limit` 8.7.0 (locked to
   8.7.0, about six weeks old; 8.7.1 was 8 days old), in

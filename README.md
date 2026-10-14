@@ -203,6 +203,12 @@ config is in the repo: [`render.yaml`](render.yaml) and
    `render.yaml` and asks for two values:
    - `MONGODB_URI`: the Atlas connection string
    - `DASHBOARD_ORIGIN`: the dashboard's origin, such as `https://<project>.vercel.app`
+
+   Render may ask for a card before it creates a Blueprint. A plain New → Web
+   Service on the free instance type doesn't need one: enter the same build
+   command, start command, health check path and environment variables as
+   `render.yaml`, with the root directory left empty. That is how the live
+   API was created.
 3. **Vercel.** Import the repository and set:
    - Root Directory: `dashboard`
    - Node.js Version: 22.x

@@ -109,6 +109,7 @@ Toolchain facts that are easy to get wrong:
 ├── TODO.md  STATUS_LOG.md  .agent_recovery_context.md
 ├── docs/
 │   ├── assignment.md             the spec (read-only)
+│   ├── v2-plan.md                Trailmark v2: decisions, layout, milestones (branch v2)
 │   └── images/                   README screenshots (sessions, journey, heatmap; scratch/dashboard-check.mjs)
 ├── package.json  package-lock.json   npm workspaces (server, dashboard); root devDep: concurrently
 ├── docker-compose.yml            local MongoDB (mongo:7, volume mongo-data)

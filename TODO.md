@@ -89,9 +89,7 @@ CausalFunnel/
 
 ## 3. Phase 1 — Server (Express + MongoDB)
 
-Done except the stretch item below (see `STATUS_LOG.md`).
-
-- [ ] **[X]** `express-rate-limit` on `POST /api/events` (e.g. 120 req/min/IP)
+Done, including the rate limit on `POST /api/events` (see `STATUS_LOG.md`).
 
 ---
 

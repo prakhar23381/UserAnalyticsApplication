@@ -120,7 +120,7 @@ Toolchain facts that are easy to get wrong:
 │   │   ├── config.js  db.js      env (fails fast without MONGODB_URI); mongoose connect/disconnect
 │   │   ├── models/Event.js       schema + the 3 indexes (autoIndex off)
 │   │   ├── lib/                  normalizeUrl.js, device.js, validateEvent.js
-│   │   ├── middleware/           cors.js (ingestCors, readCors), errorHandler.js
+│   │   ├── middleware/           cors.js (ingestCors, readCors), rateLimit.js (POST /api/events), errorHandler.js
 │   │   └── routes/               events.js, sessions.js, pages.js, heatmap.js
 │   ├── .env                      local only, git-ignored (created from .env.example)
 │   ├── public/

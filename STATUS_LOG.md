@@ -2,6 +2,33 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-14 — Server: rate limit on `POST /api/events`
+- Closes the TODO §3 stretch item. `express-rate-limit` 8.7.0 (locked to
+  8.7.0, about six weeks old; 8.7.1 was 8 days old), in
+  `server/src/middleware/rateLimit.js`: 120 requests a minute per client,
+  counted in memory per process. It sends standard `RateLimit` and
+  `RateLimit-Policy` headers (draft 8), and `429 { error }` with
+  `Retry-After` over the limit. It runs after the ingest CORS (so the 429 is
+  readable) and before the router parses the tracker's `text/plain` body.
+  Read endpoints aren't limited.
+- Client key (user decision D2a): `req.ip` by default. With
+  `CLIENT_IP_HEADER` set (production on Render: `true-client-ip`), the
+  header's value, falling back to `req.ip`. Both go through
+  `ipKeyGenerator`, so IPv6 addresses group by /56. Reason: Render keeps a
+  client-sent `X-Forwarded-For` and appends to it; the proxy hop count is
+  undocumented, and `True-Client-IP` is overwritten by Render's edge (Render
+  staff demo `johnbeynon/header-test`).
+- `createApp` takes `clientIpHeader` and `ingestLimit` (tests use small
+  limits). `config.js` reads `CLIENT_IP_HEADER`, and `server/.env.example`
+  documents it, commented out.
+- New `test/rateLimit.test.js` (7 tests): default policy headers; 429 body,
+  `Retry-After` and CORS, with nothing stored; reads unaffected; spoofed
+  headers ignored by default; per-header buckets, /56 grouping and the
+  fallback with `clientIpHeader`. `npm test`: 152 passed. The running dev
+  API serves the headers (`RateLimit: "120-in-1min"; r=119; t=60`).
+- README: configuration row, API reference (rate limit bullet, 429 row),
+  trade-offs, next steps (a shared store for several instances), tech stack.
+
 ## 2026-10-14 — Demo: products heading aligned
 - Closes TODO §5. `.page-title { padding: 40px 0 8px }` came after
   `.container { padding: 0 20px }` and zeroed its side padding. On

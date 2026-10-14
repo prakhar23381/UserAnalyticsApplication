@@ -109,7 +109,7 @@ end-to-end check. The current rules put every checked click on its element.
 | Layer | Choice | Why |
 |---|---|---|
 | Tracker | Vanilla JavaScript (ES5 syntax), no dependencies, no build step | Works on any page as a single `<script>` tag: 7 KB, about 3 KB gzipped |
-| API | Node.js 22, Express 5, ESM JavaScript, helmet, cors | Same language as the tracker and the dashboard, and no build step to deploy |
+| API | Node.js 22, Express 5, ESM JavaScript, helmet, cors, express-rate-limit | Same language as the tracker and the dashboard, and no build step to deploy |
 | Database | MongoDB 7 with Mongoose 9 | Schema, validation and indexes are declared in one place |
 | Dashboard | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, SWR | Polling with SWR makes the dashboard live without websockets |
 | Tests | Vitest, supertest, mongodb-memory-server, happy-dom | Real MongoDB queries without a running database. The tracker runs in a simulated browser |
@@ -158,6 +158,7 @@ in-memory test database, into `node_modules/.cache`.
 | | `PORT` | API port. Default `4000`. |
 | | `DASHBOARD_ORIGIN` | Comma-separated origins allowed to call the read endpoints. The same list goes into the CSP `frame-ancestors`, which lets the dashboard show the demo pages in an iframe. Default `http://localhost:3000`. |
 | | `NODE_ENV` | `production` hides the messages of 500 errors and turns on `upgrade-insecure-requests`. |
+| | `CLIENT_IP_HEADER` | Production only. A header the hosting edge overwrites with the client's address, used to tell clients apart for the rate limit (`true-client-ip` on Render). Leave it unset anywhere else: without such an edge, clients could send their own. |
 | `dashboard/.env.local` | `NEXT_PUBLIC_API_URL` | Required. Base URL of the API. It is inlined at build time, so a build without it fails, and changing it needs a rebuild. |
 
 Only the `*.example` files are committed.
@@ -255,6 +256,10 @@ the same as in the database.
 - **Errors.** Every error body is `{ "error": "message" }`.
 - **Query parameters.** A parameter repeated in the query (`?page=1&page=2`)
   gets a `400`.
+- **Rate limit.** `POST /api/events` allows 120 requests a minute per client.
+  Responses carry `RateLimit` and `RateLimit-Policy` headers, and a client over
+  the limit gets `429` with a `Retry-After` header. The read endpoints aren't
+  limited.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -301,6 +306,7 @@ Unknown fields are dropped and long strings are truncated.
 | `202` | At least one event was valid | `accepted`, `rejected`, and `errors` if any event was rejected |
 | `400` | No valid events, or the body isn't valid JSON | `error`, plus the counts and `errors` when events were rejected |
 | `413` | More than 50 events, or a body over 64 KB | `error` |
+| `429` | More than 120 requests from this client in the last minute | `error` |
 
 `errors` lists the first 10 rejected events, as `[{ "index": 3, "error": "type must be one of: page_view, click" }]`.
 
@@ -504,9 +510,15 @@ scale. See the trade-offs below.
   scale, a `sessions` collection updated on ingest, or a periodic
   pre-aggregation, would replace the `$group` over all events.
 - There is no authentication, no multi-site `site_id` and no API keys, and the
-  ingestion endpoint is open to any origin with no rate limit. The read
-  endpoints are limited to the dashboard's origin by CORS. That stops other
-  websites from reading the data in a browser, but it is not access control.
+  ingestion endpoint is open to any origin. The read endpoints are limited to
+  the dashboard's origin by CORS. That stops other websites from reading the
+  data in a browser, but it is not access control.
+- Ingestion is rate-limited per client, 120 requests a minute. The counts are
+  kept in memory, so they reset when the server restarts and aren't shared
+  between instances; the free hosting tier runs one. Behind Render, clients
+  are told apart by the `True-Client-IP` header, which Render's edge
+  overwrites with the real address. `X-Forwarded-For` keeps whatever the
+  client sent, so it can't be trusted for this.
 - `helmet`'s defaults are adjusted in three places: `frame-ancestors` instead
   of `X-Frame-Options` (for the heatmap iframe), a cross-origin resource policy
   so other sites can load `/tracker.js`, and no `upgrade-insecure-requests`
@@ -535,7 +547,8 @@ scale. See the trade-offs below.
 
 - **Multi-site support:** a `site_id` on every event, API keys for ingestion
   and reads, and authentication for the dashboard.
-- **Abuse protection:** rate limiting on `POST /api/events` and bot filtering.
+- **Abuse protection:** bot filtering, and a shared store (such as Redis) for
+  the rate limit once there is more than one server instance.
 - **Reliable ingestion:** a client `event_id` with a unique index, so the
   tracker can retry failed batches without creating duplicates.
 - **Better heatmaps:** store each click relative to its element (a CSS
@@ -562,7 +575,7 @@ scale. See the trade-offs below.
 │   │   ├── app.js              helmet, CORS, static files, routers
 │   │   ├── models/Event.js     schema and the 3 indexes
 │   │   ├── lib/                normalizeUrl, device, validateEvent
-│   │   ├── middleware/         CORS, errors
+│   │   ├── middleware/         CORS, rate limit, errors
 │   │   └── routes/             events, sessions, pages, heatmap
 │   ├── public/
 │   │   ├── tracker.js          the tracking script, served as is at /tracker.js

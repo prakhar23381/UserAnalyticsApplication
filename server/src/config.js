@@ -22,4 +22,7 @@ export const config = {
     .map((origin) => origin.trim())
     .filter(Boolean),
   isProduction: process.env.NODE_ENV === 'production',
+  // A header the hosting edge overwrites with the client's address (Render: true-client-ip).
+  // Only set it behind such an edge: anywhere else, clients could send their own.
+  clientIpHeader: process.env.CLIENT_IP_HEADER?.trim().toLowerCase() || null,
 };

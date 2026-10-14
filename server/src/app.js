@@ -3,6 +3,7 @@ import express from 'express';
 import helmet from 'helmet';
 import { ingestCors, readCors } from './middleware/cors.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+import { INGEST_LIMIT, ingestRateLimit } from './middleware/rateLimit.js';
 import eventsRouter from './routes/events.js';
 import heatmapRouter from './routes/heatmap.js';
 import pagesRouter from './routes/pages.js';
@@ -11,7 +12,12 @@ import sessionsRouter from './routes/sessions.js';
 // tracker.js and the demo pages. Resolved from this file, not the working directory.
 const publicDir = fileURLToPath(new URL('../public', import.meta.url));
 
-export function createApp({ dashboardOrigins, isProduction = false }) {
+export function createApp({
+  dashboardOrigins,
+  isProduction = false,
+  clientIpHeader = null,
+  ingestLimit = INGEST_LIMIT,
+}) {
   const app = express();
 
   app.use(
@@ -37,7 +43,8 @@ export function createApp({ dashboardOrigins, isProduction = false }) {
   });
   app.use(express.static(publicDir));
 
-  app.use('/api/events', ingestCors, eventsRouter);
+  // After CORS, so a browser can read the 429; before the router parses the tracker's text/plain body.
+  app.use('/api/events', ingestCors, ingestRateLimit(ingestLimit, { clientIpHeader }), eventsRouter);
   app.use('/api', readCors(dashboardOrigins), sessionsRouter, pagesRouter, heatmapRouter);
 
   app.use(notFound);

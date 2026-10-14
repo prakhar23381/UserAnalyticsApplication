@@ -5,9 +5,9 @@
   'use strict';
 
   var CART_KEY = 'acme_cart';
-  // Set when the dashboard is deployed (TODO Phase 7). Until then the link is
-  // hidden anywhere but localhost rather than pointing somewhere broken.
-  var PRODUCTION_DASHBOARD_URL = null;
+  // Where the footer's "View dashboard" link points off localhost. With null,
+  // the link is hidden there rather than pointing somewhere broken.
+  var PRODUCTION_DASHBOARD_URL = 'https://useranalytics-dashboard.vercel.app';
 
   function readCart() {
     try {

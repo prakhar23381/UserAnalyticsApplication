@@ -8,6 +8,13 @@ the sessions, replays each one as an ordered user journey, and draws a
 per-page click heatmap over the page itself. A three-page demo shop (Acme
 Roasters, fictional) and a seed script supply data to look at.
 
+**Live:** [Dashboard](https://useranalytics-dashboard.vercel.app) ·
+[Demo shop](https://useranalytics-api.onrender.com/demo/) (browse it, then
+watch your session appear on the dashboard) ·
+[API health](https://useranalytics-api.onrender.com/health).
+The API is on a free tier that sleeps when idle, so the first request can
+take up to a minute.
+
 ## Contents
 
 - [Screenshots](#screenshots)
@@ -114,7 +121,7 @@ end-to-end check. The current rules put every checked click on its element.
 | Database | MongoDB 7 with Mongoose 9 | Schema, validation and indexes are declared in one place |
 | Dashboard | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, SWR | Polling with SWR makes the dashboard live without websockets |
 | Tests | Vitest, supertest, mongodb-memory-server, happy-dom | Real MongoDB queries without a running database. The tracker runs in a simulated browser |
-| Hosting (target) | Render (API, tracker, demo pages), Vercel (dashboard), MongoDB Atlas M0 | All free tiers |
+| Hosting | Render (API, tracker, demo pages), Vercel (dashboard), MongoDB Atlas M0 | All free tiers |
 
 The spec allows Node.js or Flask. This project uses Node only.
 

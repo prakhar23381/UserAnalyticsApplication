@@ -112,6 +112,7 @@ Toolchain facts that are easy to get wrong:
 │   └── images/                   README screenshots (sessions, journey, heatmap; scratch/dashboard-check.mjs)
 ├── package.json  package-lock.json   npm workspaces (server, dashboard); root devDep: concurrently
 ├── docker-compose.yml            local MongoDB (mongo:7, volume mongo-data)
+├── render.yaml                   Render Blueprint: the API service (build from the root, server deps only, Node 22)
 ├── server/                       Express API (ESM, Node >=22.12)
 │   ├── package.json  vitest.config.js  .env.example
 │   ├── src/
@@ -130,6 +131,7 @@ Toolchain facts that are easy to get wrong:
 │   └── test/                     globalSetup.js, setup.js, factories.js, *.test.js (tracker.test.js: happy-dom)
 ├── dashboard/                    Next.js 16 (App Router, TypeScript, Tailwind 4, SWR)
 │   ├── package.json  next.config.ts  tsconfig.json  eslint.config.mjs
+│   ├── vercel.json               Vercel install command (dashboard workspace only)
 │   ├── .gitignore                ignores .env* but not .env*.example
 │   ├── .env.local.example        NEXT_PUBLIC_API_URL; .env.local is local only, git-ignored
 │   └── src/

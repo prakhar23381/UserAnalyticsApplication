@@ -132,20 +132,18 @@ Done, including the phone/tablet `y` fix it found (see `STATUS_LOG.md`); rerun w
 
 ## 9. Phase 7 — Deploy
 
-- [ ] **[S] MongoDB Atlas**: M0 cluster → DB user → Network Access `0.0.0.0/0` (note as trade-off) → copy URI
-- [ ] **[S] Render** (Web Service):
-  - root dir `server` · build `npm ci` · start `node src/index.js` · health check `/health`
-  - env: `MONGODB_URI`, `DASHBOARD_ORIGIN=https://<app>.vercel.app`, `NODE_ENV=production`
-  - note: free tier sleeps → first request ~30–50s (mention in README)
-- [ ] **[S] Vercel**: import repo, root dir `dashboard`, env `NEXT_PUBLIC_API_URL=https://<server>.onrender.com`
-  - the only lockfile is the root `package-lock.json` (npm workspaces): check that Vercel installs from the repo root
-  - a build without `NEXT_PUBLIC_API_URL` fails on purpose (`lib/api.ts`)
-  - Render's `DASHBOARD_ORIGIN` must be the exact Vercel origin: it is both the CORS allow-list and the CSP `frame-ancestors` the heatmap iframe needs
-- [ ] **[S]** Set `PRODUCTION_DASHBOARD_URL` in `server/public/demo/demo.js` (until then the footer dashboard link is hidden off localhost). The tracker needs no change: demo pages load the same-origin `/tracker.js`
-- [ ] **[S]** Seed production once so reviewers see data immediately:
-  `MONGODB_URI=<atlas uri> npm run seed -- --base-url https://<server>.onrender.com --allow-remote`
-  (an env var beats `server/.env`; needs the user's double confirmation, CLAUDE.md §10)
-- [ ] **[S]** Production smoke test: demo → dashboard → heatmap iframe loads (frameguard/CSP OK) → CORS OK
+Config is in the repo (`render.yaml`, `dashboard/vercel.json`; README "Deployment"). Names: Render `useranalytics-api`, Vercel `useranalytics-dashboard`, region Singapore. Approved 2026-10-14: two pushes to `main` (before step 3 and at step 6).
+
+- [ ] **[S]** (agent) Secret scan of the whole history, then the first push of `main`
+- [ ] **[S]** (user) **Atlas**: M0 cluster on AWS Singapore (`ap-southeast-1`) → database user → Network Access `0.0.0.0/0` → SRV connection string with `/causalfunnel` as the database. The URI stays out of the chat.
+- [ ] **[S]** (user) **Render**: New → Blueprint → this repo; enter `MONGODB_URI` and `DASHBOARD_ORIGIN=https://useranalytics-dashboard.vercel.app` (or whatever origin Vercel gives). Report the service URL.
+  - free tier sleeps → first request ~30–50 s (in the README)
+- [ ] **[S]** (user) **Vercel**: import the repo, Root Directory `dashboard`, Node.js 22.x, `NEXT_PUBLIC_API_URL=<Render URL>`. Report the URL. Check the build log for Node 22 and the custom install command; if it uses Node 24, add `"engines": { "node": "^22.12.0" }` to `dashboard/package.json`.
+  - if Vercel added a suffix to the name, fix `DASHBOARD_ORIGIN` on Render
+- [ ] **[S]** (agent) Set `PRODUCTION_DASHBOARD_URL` in `server/public/demo/demo.js` and the README live links (TODO §10); second push of `main`
+- [ ] **[S]** (agent) Production smoke test: health; `/tracker.js` CORP; CORS allowed for the dashboard and refused for others; CSP `frame-ancestors`; a headless Brave visit is stored and shows on the live dashboard; heatmap iframe loads; `RateLimit` headers, and a spoofed `True-Client-IP` / `X-Forwarded-For` doesn't change the bucket
+- [ ] **[S]** (user, double confirmation) Seed production once:
+  `MONGODB_URI='<atlas uri>' npm run seed -- --base-url https://<render url> --allow-remote`
 
 ---
 

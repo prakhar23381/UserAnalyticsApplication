@@ -14,6 +14,7 @@ Roasters, fictional) and a seed script supply data to look at.
 - [How it works](#how-it-works)
 - [Tech stack](#tech-stack)
 - [Run it locally](#run-it-locally)
+- [Deployment](#deployment)
 - [Embedding the tracker](#embedding-the-tracker)
 - [Seed script](#seed-script)
 - [API reference](#api-reference)
@@ -178,6 +179,51 @@ The server tests need no running MongoDB: each run starts one in-memory
 `mongod`, with a separate database per test file. The tracker tests load the
 real `public/tracker.js` through a `<script src>` tag in happy-dom. They check,
 among other things, that every event it sends passes the API's validator.
+
+## Deployment
+
+The API (with the tracker and the demo shop) runs on Render, the dashboard on
+Vercel, and the data on MongoDB Atlas, all on free tiers. The deployment
+config is in the repo: [`render.yaml`](render.yaml) and
+[`dashboard/vercel.json`](dashboard/vercel.json).
+
+1. **MongoDB Atlas.** Create an M0 cluster in the same region as the API
+   (Singapore here) and a database user. Allow network access from anywhere
+   (`0.0.0.0/0`), because Render's free tier has no fixed outbound
+   addresses. Copy the connection string and put the database name in its
+   path: `…mongodb.net/causalfunnel?…`.
+2. **Render.** Choose New → Blueprint and pick the repository. Render reads
+   `render.yaml` and asks for two values:
+   - `MONGODB_URI`: the Atlas connection string
+   - `DASHBOARD_ORIGIN`: the dashboard's origin, such as `https://<project>.vercel.app`
+3. **Vercel.** Import the repository and set:
+   - Root Directory: `dashboard`
+   - Node.js Version: 22.x
+   - Environment variable `NEXT_PUBLIC_API_URL`: the Render URL, such as `https://<service>.onrender.com`
+4. **Seed** (optional), from your machine. The script refuses a remote
+   database without `--allow-remote`:
+
+   ```bash
+   MONGODB_URI='<atlas connection string>' npm run seed -- --base-url https://<service>.onrender.com --allow-remote
+   ```
+
+Why the config looks the way it does:
+
+- Render builds from the repo root, because the only lockfile is there, and
+  installs just the server's runtime dependencies
+  (`npm ci --omit=dev -w server`, about 16 MB). It pins Node 22, which is
+  what the tests run on; an open range like `>=22.12` would get the newest
+  release.
+- Vercel installs only the dashboard's dependencies
+  (`npm ci -w dashboard --include=dev`). The default install would also
+  pull in the server and the test tools, including a 141 MB MongoDB binary.
+- `DASHBOARD_ORIGIN` must match the dashboard's origin exactly. It is both
+  the CORS allow-list for the read endpoints and the CSP `frame-ancestors`
+  that lets the heatmap frame the demo pages. Vercel preview deployments have
+  other origins, so they can't read the API.
+- `NEXT_PUBLIC_API_URL` is built into the dashboard, so changing it needs a
+  redeploy.
+- A push to `main` redeploys both.
 
 ## Embedding the tracker
 
@@ -566,6 +612,7 @@ scale. See the trade-offs below.
 .
 ├── docker-compose.yml          local MongoDB 7
 ├── package.json                npm workspaces: server, dashboard
+├── render.yaml                 Render Blueprint for the API
 ├── docs/
 │   ├── assignment.md           the original spec
 │   └── images/                 README screenshots
@@ -583,6 +630,7 @@ scale. See the trade-offs below.
 │   ├── scripts/seed.js
 │   └── test/                   Vitest: API (supertest + in-memory MongoDB) and tracker (happy-dom)
 └── dashboard/                  Next.js 16 (App Router, TypeScript, Tailwind 4, SWR)
+    ├── vercel.json             install command for Vercel
     └── src/
         ├── app/                /sessions, /sessions/[id], /heatmap
         ├── components/         tables, journey timeline, heatmap canvas, states

@@ -1,0 +1,29 @@
+# Render Blueprint: the API, which also serves /tracker.js and the demo pages.
+# Spec: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: useranalytics-api
+    runtime: node
+    plan: free
+    region: singapore # keep the Atlas cluster in the same region
+    # The repo root, not server/: the only lockfile is the workspace root's.
+    # Installs the server's runtime dependencies only (no dashboard, no test tools).
+    buildCommand: npm ci --omit=dev -w server
+    startCommand: node server/src/index.js
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: "22" # what runs locally and in the tests; a bare >=22.12 would get the newest Node
+      - key: NODE_ENV
+        value: production
+      # Render's edge overwrites this header with the client's address;
+      # X-Forwarded-For keeps whatever the client sent.
+      - key: CLIENT_IP_HEADER
+        value: true-client-ip
+      # Secrets and deployment-specific values: Render asks for them when the
+      # Blueprint is created, and they never live in this file.
+      - key: MONGODB_URI
+        sync: false
+      - key: DASHBOARD_ORIGIN # the Vercel dashboard's origin, e.g. https://<project>.vercel.app
+        sync: false

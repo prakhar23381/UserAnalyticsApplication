@@ -51,4 +51,25 @@ export const LAB_OVERVIEW: OverviewResponse = {
     { device: 'mobile', sessions: 488 },
     { device: 'tablet', sessions: 154 },
   ],
+  browsers: [
+    { value: 'Chrome', sessions: 701 },
+    { value: 'Safari', sessions: 402 },
+    { value: 'Firefox', sessions: 96 },
+    { value: 'Edge', sessions: 61 },
+    { value: 'Samsung Internet', sessions: 24 },
+  ],
+  countries: [
+    { value: 'IN', sessions: 388 },
+    { value: 'US', sessions: 301 },
+    { value: 'GB', sessions: 144 },
+    { value: 'DE', sessions: 97 },
+    { value: null, sessions: 40 },
+  ],
+  sources: [
+    { value: 'Direct', sessions: 470 },
+    { value: 'google.com', sessions: 402 },
+    { value: 'newsletter', sessions: 210 },
+    { value: 'instagram', sessions: 150 },
+    { value: 'duckduckgo.com', sessions: 52 },
+  ],
 };

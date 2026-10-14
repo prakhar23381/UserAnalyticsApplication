@@ -44,9 +44,13 @@ export const sessionEventsUrl = (id: string) =>
 export const pagesUrl = (filters: ApiFilterParams = {}) =>
   `${API_URL}/api/pages${apiFilterQuery(filters).replace(/^&/, '?')}`;
 
-// Only the date range applies: `device` picks the layout to draw.
+// The segment picks the sessions; `device` picks the layout to draw.
 export const heatmapUrl = (page: string, device: Device, filters: ApiFilterParams = {}) =>
-  `${API_URL}/api/heatmap?${new URLSearchParams({ page, device })}${apiFilterQuery(filters, ['from'])}`;
+  `${API_URL}/api/heatmap?${new URLSearchParams({ page, device })}${apiFilterQuery(filters)}`;
 
 export const overviewUrl = (filters: ApiFilterParams = {}) =>
   `${API_URL}/api/overview${apiFilterQuery(filters).replace(/^&/, '?')}`;
+
+// The filter menus' values depend on the date range only.
+export const filterOptionsUrl = (filters: ApiFilterParams = {}) =>
+  `${API_URL}/api/filters${apiFilterQuery(filters, ['from']).replace(/^&/, '?')}`;

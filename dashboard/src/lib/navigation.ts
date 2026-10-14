@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { type ApiFilterParams, apiFilterParams, type Filters, parseDevices, parseRange } from './filters';
+import { type ApiFilterParams, apiFilterParams, type Filters, readFilters, SEGMENT_KEYS } from './filters';
 import { type Changes, dashboardHref } from './url';
 
 /** Builds links that keep the rest of the current view (filters, other tabs' state). */
@@ -21,12 +21,12 @@ export function useNow(intervalMs = 60_000): number {
   return now;
 }
 
-/** The filter bar's state, from the URL. */
+/** The filter bar's state, from the URL. Stable while the segment's own parameters don't change. */
 export function useFilters(): Filters {
   const params = useSearchParams();
-  const range = params.get('range');
-  const devices = params.get('devices');
-  return useMemo(() => ({ range: parseRange(range), devices: parseDevices(devices) }), [range, devices]);
+  const key = ['range', ...SEGMENT_KEYS].map((name) => `${name}=${params.get(name) ?? ''}`).join('&');
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` covers every parameter readFilters reads
+  return useMemo(() => readFilters(params), [key]);
 }
 
 /** The filter bar's state as API query parameters (stable for 5 minutes at a time). */

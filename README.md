@@ -32,11 +32,14 @@ take up to a minute.
 
 ## Screenshots
 
-The dashboard is one page: a filter bar (the segment: date range and devices)
-on top, then three tabs that it scopes.
+The dashboard is one page: a filter bar on top, then three tabs that it
+scopes. The filter bar is the segment: a date range, devices, and any of
+browser, OS, country, referrer, UTM tags, entry, exit or visited page, session
+duration, pages and clicks. Each filter shows as a chip that opens its editor.
 
 **Overview.** Headline numbers with the change from the previous period,
-sessions per day, top pages and the device split.
+sessions per day, top pages, and the split by device, browser, country and
+traffic source.
 
 ![Overview](docs/images/overview.png)
 
@@ -817,7 +820,7 @@ collection, the API then builds it from the events.
     ├── vercel.json             install command for Vercel
     └── src/
         ├── app/                / (Overview · Sessions · Heatmaps tabs), /lab (local only); old routes redirect
-        ├── components/         filter bar, tabs, Overview (stat tiles, chart, top pages, devices), tables, journey timeline, heatmap canvas, states, lab/
+        ├── components/         filter bar (popover, filter menu and editors), tabs, Overview (stat tiles, chart, top pages, devices, value bars), tables, journey timeline, heatmap canvas, states, lab/
         └── lib/                API client, URL state, filters, overview maths, heatmap maths, formatting, with unit tests
 ```
 

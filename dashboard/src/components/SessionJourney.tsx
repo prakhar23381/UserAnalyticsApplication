@@ -8,6 +8,7 @@ import EventTimeline from '@/components/EventTimeline';
 import PageHeading from '@/components/PageHeading';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { ApiError, sessionEventsUrl, useApi } from '@/lib/api';
+import { countryName } from '@/lib/filters';
 import { formatDateTime, formatDuration } from '@/lib/format';
 import { sourceOf } from '@/lib/journey';
 import { useDashboardHref } from '@/lib/navigation';
@@ -58,7 +59,7 @@ export default function SessionJourney({ id }: { id: string }) {
     );
   }
 
-  const { events } = data;
+  const { events, session } = data;
   const first = events[0];
   const last = events[events.length - 1];
   const pages = new Set(events.map((event) => event.page_url)).size;
@@ -70,7 +71,7 @@ export default function SessionJourney({ id }: { id: string }) {
         <span className="break-all font-mono">{data.session_id}</span>
       </PageHeading>
       {error && <ErrorState error={error} stale />}
-      <dl className="mb-6 grid grid-cols-2 gap-4 rounded-xl border border-line bg-surface p-4 text-sm shadow-xs sm:grid-cols-3 lg:grid-cols-6">
+      <dl className="mb-6 grid grid-cols-2 gap-4 rounded-xl border border-line bg-surface p-4 text-sm shadow-xs sm:grid-cols-4">
         <Fact label="Started">{formatDateTime(first.timestamp)}</Fact>
         <Fact label="Duration">{formatDuration(Date.parse(last.timestamp) - Date.parse(first.timestamp))}</Fact>
         <Fact label="Events">{events.length}</Fact>
@@ -81,7 +82,17 @@ export default function SessionJourney({ id }: { id: string }) {
             {first.viewport_w}×{first.viewport_h}
           </span>
         </Fact>
-        <Fact label="Source">{sourceOf(first)}</Fact>
+        <Fact label="Browser">
+          {session ? (
+            <>
+              {session.browser} <span className="font-normal text-ink-3">on {session.os}</span>
+            </>
+          ) : (
+            '—'
+          )}
+        </Fact>
+        <Fact label="Country">{session?.country ? countryName(session.country) : 'Unknown'}</Fact>
+        <Fact label="Source">{session?.source ?? sourceOf(first)}</Fact>
       </dl>
       <EventTimeline events={events} heatmapHref={heatmapHref} />
     </>

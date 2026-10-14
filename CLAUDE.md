@@ -146,13 +146,14 @@ Toolchain facts that are easy to get wrong:
 │       ├── app/                  layout.tsx (TopBar, Inter, theme script), page.tsx (the one-page dashboard),
 │       │                         icon.svg, globals.css (tokens), lab/page.tsx (local only, 404 in production),
 │       │                         sessions/, sessions/[id]/, heatmap/ (redirects from the pre-v2 routes)
-│       ├── components/           TopBar, Logo, FilterBar, Tabs, Dashboard, OverviewTab (+ overview/: StatTile,
-│       │                         SessionsChart (Recharts), DeviceSplit, TopPages), SessionsTab, SessionsTable,
+│       ├── components/           TopBar, Logo, FilterBar, FilterEditor (FilterMenu, FilterEditor), Popover, Tabs,
+│       │                         Dashboard, OverviewTab (+ overview/: StatTile, SessionsChart (Recharts), DeviceSplit,
+│       │                         TopPages, ValueBars), SessionsTab, SessionsTable,
 │       │                         SessionJourney, EventTimeline, EventBadge, HeatmapView, Heatmap, PageSelector,
 │       │                         ToggleGroup, DeviceLabel, Pagination, PageHeading, States, RelativeTime,
 │       │                         lab/ (Lab, ScreensSection, ComponentsSection, TokensSection, fixtures)
 │       └── lib/                  config.ts (API_URL, DEMO_URL; server-safe), api.ts (useApi, URLs), url.ts
-│                                 (query-string state), filters.ts (segment presets, API params), navigation.ts
+│                                 (query-string state), filters.ts (segment: presets, FILTER_DEFS, labels, API params), navigation.ts
 │                                 (useDashboardHref, useFilters, useApiFilters), overview.ts (deltas, number
 │                                 formats), types.ts, format.ts, journey.ts, heatmap.ts, *.test.ts (Vitest)
 ├── scratch/                      git-ignored; browser-check.mjs, measure-layout.mjs, dashboard-check.mjs,

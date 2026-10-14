@@ -118,7 +118,7 @@ export default function HeatmapView() {
         <div className={heatmap.isLoading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
           {data.total_clicks === 0 ? (
             <EmptyState title={`No ${DEVICE_META[shownDevice].label.toLowerCase()} clicks on ${pathOf(data.page_url)} yet`}>
-              Try another device or date range, or open the page at that size and click around.
+              Try another device, a longer date range or fewer filters, or open the page at that size and click around.
             </EmptyState>
           ) : (
             <div className="rounded-xl border border-line bg-surface p-3 shadow-xs">

@@ -1,15 +1,16 @@
 'use client';
 
-import { type LucideIcon, MonitorSmartphone, TrendingUp, FileText } from 'lucide-react';
+import { AppWindow, FileText, Globe, type LucideIcon, MonitorSmartphone, Signpost, TrendingUp } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
 import PageHeading from '@/components/PageHeading';
 import DeviceSplit from '@/components/overview/DeviceSplit';
 import StatTile from '@/components/overview/StatTile';
 import TopPages from '@/components/overview/TopPages';
+import ValueBars from '@/components/overview/ValueBars';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { overviewUrl, useApi } from '@/lib/api';
-import { RANGES } from '@/lib/filters';
+import { countryName, RANGES } from '@/lib/filters';
 import { formatDuration } from '@/lib/format';
 import { useApiFilters, useDashboardHref, useFilters } from '@/lib/navigation';
 import { formatCount, formatRate, periodDelta } from '@/lib/overview';
@@ -38,10 +39,13 @@ export function OverviewContent({
   data,
   period,
   heatmapHref,
+  filterHref,
 }: {
   data: OverviewResponse;
   period: string | null;
   heatmapHref: (pageUrl: string) => string;
+  /** A link that narrows the segment to one value of a list filter. */
+  filterHref: (param: 'browsers' | 'countries', value: string) => string;
 }) {
   const { totals } = data;
   // Comparing with a period that had no sessions isn't meaningful (every rate would "change" from 0).
@@ -81,7 +85,7 @@ export function OverviewContent({
         ))}
       </div>
       {totals.sessions === 0 ? (
-        <EmptyState title="No sessions in this segment">Try a longer date range or more devices in the filter bar.</EmptyState>
+        <EmptyState title="No sessions in this segment">Try a longer date range, more devices or fewer filters in the filter bar.</EmptyState>
       ) : (
         <>
           <Card title="Sessions over time" icon={TrendingUp}>
@@ -93,6 +97,28 @@ export function OverviewContent({
             </Card>
             <Card title="Sessions by device" icon={MonitorSmartphone}>
               <DeviceSplit devices={data.devices} />
+            </Card>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Card title="Browsers" icon={AppWindow}>
+              <ValueBars
+                total={totals.sessions}
+                rows={data.browsers.map(({ value, sessions }) => ({ key: value, label: value, sessions, filterHref: filterHref('browsers', value) }))}
+              />
+            </Card>
+            <Card title="Countries" icon={Globe}>
+              <ValueBars
+                total={totals.sessions}
+                rows={data.countries.map(({ value, sessions }) => ({
+                  key: value ?? 'unknown',
+                  label: countryName(value ?? 'unknown'),
+                  sessions,
+                  filterHref: filterHref('countries', value ?? 'unknown'),
+                }))}
+              />
+            </Card>
+            <Card title="Traffic sources" icon={Signpost}>
+              <ValueBars total={totals.sessions} rows={data.sources.map(({ value, sessions }) => ({ key: value, label: value, sessions }))} />
             </Card>
           </div>
         </>
@@ -122,6 +148,7 @@ export default function OverviewTab() {
           data={data}
           period={preset?.previous ?? null}
           heatmapHref={(pageUrl) => hrefFor({ tab: 'heatmaps', page: pageUrl })}
+          filterHref={(param, value) => hrefFor({ [param]: value, p: null })}
         />
       </div>
     </>

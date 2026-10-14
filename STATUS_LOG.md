@@ -2,6 +2,24 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-15 — v2 M2b: dashboard filters (branch `v2`)
+- **`lib/filters.ts`:** `FILTER_DEFS` (13 filters in 4 groups: list, single value, whole-number range),
+  URL parameters named as the API's, cleaned on read (bad values dropped), passed through to every
+  API call; labels (`Intl.DisplayNames` country names, "Direct (no referrer)", page paths) and chip
+  summaries ("10s – 1m 00s", "≥ 3"). `useFilters` memoizes on the segment's own parameters.
+- **Filter bar:** `+ Filter` menu by group → editor in place (checkbox lists with session counts and a
+  search box past 8 values, single-choice lists, min/max form with Apply); active filters as chips
+  (click to edit, × to remove), Clear all (keeps the date range); summary says "N more filters".
+  `Popover` component: outside click and Esc close, focus returns to its button after a choice or
+  Esc, bottom sheet under 640 px. Menu values from `GET /api/filters` (loaded only while open, not polled).
+- **Views:** Sessions table adds Browser, Country, Source; journey header adds Browser (on OS), Country,
+  and the session's source; Overview adds Browsers, Countries (each row can narrow the segment) and
+  Traffic sources; heatmaps send the whole segment; empty states mention filters.
+- Lab: filter menu and editors specimen (live values). Dashboard tests 95 (+8). Browser check (headless
+  Brave): Overview, filtered Sessions, menu → editor, tick applies, range applies, phone bottom sheet at
+  390 px (no sideways scroll), journey, filtered heatmap, lab; no console or network errors. Fixed on
+  the way: focus fell to the page when the menu switched to an editor.
+
 ## 2026-10-15 — v2 M2a: sessions collection and the full segment (branch `v2`)
 - **`sessions` collection** (`models/Session.js`, 3 indexes): one summary per session, recomputed
   from all its events after every ingest batch (`lib/sessionStore.js`, M2-D1a). A summary built from

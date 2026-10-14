@@ -8,7 +8,7 @@ import RelativeTime from '@/components/RelativeTime';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { DEMO_URL, POLL_MS, sessionsUrl, useApi } from '@/lib/api';
 import { formatDuration, pathOf, shortId } from '@/lib/format';
-import { ALL_DEVICES } from '@/lib/filters';
+import { countryName, isNarrowed } from '@/lib/filters';
 import { useApiFilters, useDashboardHref, useFilters } from '@/lib/navigation';
 import type { Paginated, SessionSummary } from '@/lib/types';
 import { parsePageNumber } from '@/lib/url';
@@ -32,7 +32,7 @@ export default function SessionsTable() {
   const page = parsePageNumber(useSearchParams().get('p'));
   const pageHref = (n: number) => hrefFor({ p: n > 1 ? n : null });
   const filters = useFilters();
-  const narrowed = filters.range !== 'all' || filters.devices.length < ALL_DEVICES.length;
+  const narrowed = isNarrowed(filters);
   // keepPreviousData: the current rows stay while the next page (or segment) loads.
   const { data, error } = useApi<Paginated<SessionSummary>>(sessionsUrl(page, useApiFilters()), { keepPreviousData: true });
 
@@ -41,7 +41,7 @@ export default function SessionsTable() {
   if (data.total === 0 && narrowed) {
     return (
       <EmptyState title="No sessions in this segment">
-        Try a longer date range or more devices in the filter bar.
+        Try a longer date range, more devices or fewer filters in the filter bar.
       </EmptyState>
     );
   }
@@ -81,6 +81,9 @@ export default function SessionsTable() {
               <th scope="col" className={`${th} hidden text-right sm:table-cell`}>Page views</th>
               <th scope="col" className={`${th} hidden text-right sm:table-cell`}>Clicks</th>
               <th scope="col" className={`${th} hidden md:table-cell`}>Device</th>
+              <th scope="col" className={`${th} hidden lg:table-cell`}>Browser</th>
+              <th scope="col" className={`${th} hidden xl:table-cell`}>Country</th>
+              <th scope="col" className={`${th} hidden xl:table-cell`}>Source</th>
               <th scope="col" className={th}>Started</th>
               <th scope="col" className={`${th} hidden md:table-cell`}>Duration</th>
               <th scope="col" className={`${th} hidden lg:table-cell`}>Entry page</th>
@@ -108,6 +111,15 @@ export default function SessionsTable() {
                   <td className={`${td} hidden text-right tabular-nums text-ink-2 sm:table-cell`}>{session.clicks}</td>
                   <td className={`${td} hidden md:table-cell`}>
                     <DeviceLabel device={session.device} />
+                  </td>
+                  <td className={`${td} hidden whitespace-nowrap text-ink-2 lg:table-cell`} title={session.os}>
+                    {session.browser}
+                  </td>
+                  <td className={`${td} hidden max-w-36 truncate text-ink-2 xl:table-cell`}>
+                    {session.country ? countryName(session.country) : <span className="text-ink-3">Unknown</span>}
+                  </td>
+                  <td className={`${td} hidden max-w-36 truncate text-ink-2 xl:table-cell`} title={session.source}>
+                    {session.source}
                   </td>
                   <td className={`${td} whitespace-nowrap text-ink-2`}>
                     <RelativeTime iso={session.first_seen} />

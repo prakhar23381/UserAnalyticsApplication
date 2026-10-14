@@ -1,4 +1,4 @@
-import type { Device, HeatmapClick } from './types';
+import type { Box, Device, HeatmapClick, RankedElement } from './types';
 
 /**
  * Width each device's heatmap is drawn at. The seed script measured its click
@@ -12,6 +12,7 @@ export const GRID_CELL = 40;
 export interface Point {
   x: number;
   y: number;
+  key?: string; // the element clicked (GET /api/elements)
 }
 
 export interface ClickLayout {
@@ -91,7 +92,7 @@ export function layoutClicks(clicks: HeatmapClick[], device: Device): ClickLayou
     const point = placeClick(click, device, refHeight);
     height = Math.max(height, click.doc_h * heightRatio(click, refHeight), point.y);
     if (point.x < 0 || point.x >= width) outside += 1;
-    else points.push(point);
+    else points.push(click.key ? { ...point, key: click.key } : point);
   }
   return { width, height: Math.ceil(height), points, outside };
 }
@@ -126,4 +127,118 @@ export function binPoints(points: Point[], size = GRID_CELL): { cells: Cell[]; m
   let max = 0;
   for (const cell of cells.values()) max = Math.max(max, cell.count);
   return { cells: [...cells.values()], max };
+}
+
+// ---- Elements: numbered badges and the element heatmap ----
+
+/** How many of the top elements get a numbered badge (M4-D3). */
+export const BADGE_COUNT = 10;
+
+export interface ElementMark {
+  rank: number;
+  key: string;
+  x: number; // where the badge goes, in reference px
+  y: number;
+  box: Box | null; // the element's box at the reference width, when the tracker recorded one
+}
+
+/** A recorded box placed on the reference layout the way its click is: both corners mapped. */
+export function placeBox(box: Box, click: HeatmapClick, device: Device, refHeight: number | null = null): Box {
+  const topLeft = placeClick({ ...click, x: box.x, y: box.y }, device, refHeight);
+  const bottomRight = placeClick({ ...click, x: box.x + box.w, y: box.y + box.h }, device, refHeight);
+  return { x: topLeft.x, y: topLeft.y, w: bottomRight.x - topLeft.x, h: bottomRight.y - topLeft.y };
+}
+
+/**
+ * A badge for each ranked element that has clicks in the response: at the
+ * centre of its newest recorded box, mapped like its clicks, else at the
+ * middle of its clicks on the canvas (M4-D3).
+ */
+export function elementMarks(
+  clicks: HeatmapClick[],
+  device: Device,
+  elements: { rank: number; key: string }[],
+  count = BADGE_COUNT,
+): ElementMark[] {
+  const refHeight = referenceHeight(clicks, device);
+  const width = REFERENCE_WIDTH[device];
+  const marks: ElementMark[] = [];
+  for (const { rank, key } of elements.slice(0, count)) {
+    const own = clicks.filter((click) => click.key === key); // newest first, as the API sends them
+    const withBox = own.find((click) => click.box);
+    if (withBox?.box) {
+      const box = placeBox(withBox.box, withBox, device, refHeight);
+      marks.push({ rank, key, x: box.x + box.w / 2, y: box.y + box.h / 2, box });
+      continue;
+    }
+    const points = own.map((click) => placeClick(click, device, refHeight)).filter((point) => point.x >= 0 && point.x < width);
+    if (points.length === 0) continue;
+    const x = points.reduce((sum, point) => sum + point.x, 0) / points.length;
+    const y = points.reduce((sum, point) => sum + point.y, 0) / points.length;
+    marks.push({ rank, key, x, y, box: null });
+  }
+  return marks;
+}
+
+// ---- Heat: the colour scale and how strongly each click counts ----
+
+/** Blur radius of one click, in reference px. */
+export const HEAT_RADIUS = 36;
+
+// Cold to hot: transparent → blue → cyan → green → yellow → red (M4-D4).
+const HEAT_STOPS: [number, [number, number, number]][] = [
+  [0, [0, 0, 255]],
+  [0.25, [0, 0, 255]],
+  [0.45, [0, 255, 255]],
+  [0.6, [0, 255, 0]],
+  [0.8, [255, 255, 0]],
+  [1, [255, 0, 0]],
+];
+
+/** The colour for an intensity from 0 (no clicks) to 1 (the busiest spot), as [r, g, b, a] in 0–255. */
+export function heatColor(t: number): [number, number, number, number] {
+  const v = Math.min(1, Math.max(0, t));
+  let i = 1;
+  while (i < HEAT_STOPS.length - 1 && v > HEAT_STOPS[i][0]) i++;
+  const [t0, c0] = HEAT_STOPS[i - 1];
+  const [t1, c1] = HEAT_STOPS[i];
+  const f = t1 === t0 ? 0 : (v - t0) / (t1 - t0);
+  const mix = (k: number) => Math.round(c0[k] + (c1[k] - c0[k]) * f);
+  // Faint where few clicks overlap, nearly opaque at the hottest spots.
+  return [mix(0), mix(1), mix(2), Math.round(Math.min(1, v * 1.8) * 0.85 * 255)];
+}
+
+/** heatColor for every intensity byte, as a lookup table (256 × RGBA). */
+export function heatPalette(): Uint8ClampedArray {
+  const table = new Uint8ClampedArray(256 * 4);
+  for (let i = 0; i < 256; i++) table.set(heatColor(i / 255), i * 4);
+  return table;
+}
+
+/**
+ * How much one click adds to the intensity layer: enough for a few overlapping
+ * clicks to stand out, little enough that thousands don't flatten into one
+ * blob. The layer is then stretched so its busiest spot is the hottest.
+ */
+export function heatAlpha(points: Point[], radius = HEAT_RADIUS): number {
+  const { max } = binPoints(points, radius);
+  if (max === 0) return 0;
+  return Math.min(0.6, Math.max(0.04, 1.2 / max));
+}
+
+/**
+ * How a ranked element reads in the sidebar: `name` is its text, else
+ * `#id`, else its tag and first class; `detail` is the selector (or key) to copy.
+ */
+export function elementLabel(element: Pick<RankedElement, 'key' | 'selector' | 'tag' | 'id' | 'classes' | 'text'>): {
+  name: string;
+  detail: string;
+} {
+  const text = element.text?.trim();
+  let name: string;
+  if (text) name = text.length > 40 ? `${text.slice(0, 39)}…` : text;
+  else if (element.id) name = `#${element.id}`;
+  else if (element.tag) name = element.classes ? `${element.tag}.${element.classes.split(' ')[0]}` : element.tag;
+  else name = element.key;
+  return { name, detail: element.selector ?? element.key };
 }

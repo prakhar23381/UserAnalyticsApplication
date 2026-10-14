@@ -28,11 +28,31 @@ export const LAB_EVENTS: TrackedEvent[] = [
 
 export const LAB_HEATMAP_PAGE = PRODUCTS;
 
-// A spread around three "Add to cart" buttons and the nav, like real traffic.
-export const LAB_CLICKS: HeatmapClick[] = [
-  [281, 943], [300, 930], [262, 951], [549, 547], [560, 540], [530, 560], [324, 913],
-  [564, 927], [580, 920], [1166, 32], [1170, 36], [407, 30], [412, 28], [324, 30], [268, 941],
-].map(([x, y]) => ({ x, y, doc_w: 1280, doc_h: 1144, viewport_w: 1280, viewport_h: 800, device: 'desktop' }));
+// A spread around three "Add to cart" buttons and the nav, like real traffic,
+// each click naming its element (and box) as GET /api/heatmap does.
+const ESPRESSO = { key: '#add-espresso', box: { x: 117, y: 900, w: 221, h: 54 } };
+const ETHIOPIA = { key: '#add-ethiopia', box: { x: 392, y: 523, w: 221, h: 54 } };
+const COLD_BREW = { key: '#add-cold-brew', box: { x: 392, y: 900, w: 221, h: 54 } };
+const CART = { key: '#cart-link', box: { x: 1123, y: 17, w: 57, h: 26 } };
+const ABOUT = { key: 'a "About"' }; // recorded before the tracker sent boxes
+const PRODUCTS_LINK = { key: 'a "Products"' };
+export const LAB_CLICKS: HeatmapClick[] = (
+  [
+    [281, 943, ESPRESSO], [300, 930, ESPRESSO], [262, 951, ESPRESSO], [549, 547, ETHIOPIA], [560, 540, ETHIOPIA],
+    [530, 560, ETHIOPIA], [324, 913, ESPRESSO], [564, 927, COLD_BREW], [580, 920, COLD_BREW], [1166, 32, CART],
+    [1170, 36, CART], [407, 30, ABOUT], [412, 28, ABOUT], [324, 30, PRODUCTS_LINK], [268, 941, ESPRESSO],
+  ] as const
+).map(([x, y, element]) => ({ x, y, doc_w: 1280, doc_h: 1144, viewport_w: 1280, viewport_h: 800, device: 'desktop', ...element }));
+
+// The ranking GET /api/elements would return for LAB_CLICKS.
+export const LAB_RANKING = [
+  { rank: 1, key: '#add-espresso' },
+  { rank: 2, key: '#add-ethiopia' },
+  { rank: 3, key: '#add-cold-brew' },
+  { rank: 4, key: '#cart-link' },
+  { rank: 5, key: 'a "About"' },
+  { rank: 6, key: 'a "Products"' },
+];
 
 // Two weeks of sample traffic for the Overview, with a previous period to compare.
 export const LAB_OVERVIEW: OverviewResponse = {

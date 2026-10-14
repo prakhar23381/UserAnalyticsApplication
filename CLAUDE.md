@@ -128,9 +128,9 @@ Toolchain facts that are easy to get wrong:
 │   │   ├── models/               Event.js (3 indexes), Session.js (3 indexes; derived from events) — autoIndex off
 │   │   ├── lib/                  normalizeUrl.js, device.js, validateEvent.js, userAgent.js, sessionStore.js
 │   │   │                         (rebuildSessions, ensureSessions), filters.js (the segment parser),
-│   │   │                         insights.js (rage / dead / quick back)
+│   │   │                         insights.js (rage / dead / quick back), elements.js (element keys)
 │   │   ├── middleware/           cors.js (ingestCors, readCors), rateLimit.js (POST /api/events), errorHandler.js
-│   │   └── routes/               events.js, sessions.js, pages.js, heatmap.js, overview.js, filterOptions.js
+│   │   └── routes/               events.js, sessions.js, pages.js, heatmap.js (+ /elements), overview.js, filterOptions.js
 │   ├── .env                      local only, git-ignored (created from .env.example)
 │   ├── public/
 │   │   ├── tracker.js            the tracking script, served as-is at /tracker.js
@@ -150,7 +150,8 @@ Toolchain facts that are easy to get wrong:
 │       ├── components/           TopBar, Logo, FilterBar, FilterEditor (FilterMenu, FilterEditor), SegmentMenu, Popover, Tabs,
 │       │                         Dashboard, OverviewTab (+ overview/: StatTile, InsightCards, SessionsChart (Recharts),
 │       │                         DeviceSplit, TopPages, ValueBars, Watchlist), InsightChip, SessionsTab, SessionsTable,
-│       │                         SessionJourney, EventTimeline, EventBadge, HeatmapView, Heatmap, PageSelector,
+│       │                         SessionJourney, EventTimeline, EventBadge, HeatmapView, Heatmap (dots, grid,
+│       │                         canvas heat, badges), ElementsSidebar, PageSelector,
 │       │                         ToggleGroup, DeviceLabel, Pagination, PageHeading, States, RelativeTime,
 │       │                         lab/ (Lab, ScreensSection, ComponentsSection, TokensSection, fixtures)
 │       └── lib/                  config.ts (API_URL, DEMO_URL; server-safe), api.ts (useApi, URLs), url.ts

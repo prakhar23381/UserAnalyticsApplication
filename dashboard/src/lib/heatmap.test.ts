@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { binPoints, layoutClicks, placeClick, previewUrl, referenceHeight } from './heatmap';
+import {
+  binPoints,
+  elementLabel,
+  elementMarks,
+  heatAlpha,
+  heatColor,
+  heatPalette,
+  layoutClicks,
+  placeBox,
+  placeClick,
+  previewUrl,
+  referenceHeight,
+} from './heatmap';
 import type { Device, HeatmapClick } from './types';
 
 const click = (
@@ -182,5 +194,107 @@ describe('binPoints', () => {
 
   it('has no cells and a max of 0 without points', () => {
     expect(binPoints([])).toEqual({ cells: [], max: 0 });
+  });
+});
+
+describe('element keys on points', () => {
+  it('carries the element key onto its point', () => {
+    const { points } = layoutClicks([{ ...click(100, 200, 1280), key: '#buy' }, click(10, 20, 1280)], 'desktop');
+    expect(points).toEqual([{ x: 100, y: 200, key: '#buy' }, { x: 10, y: 20 }]);
+  });
+});
+
+describe('placeBox', () => {
+  const box = { x: 117, y: 900, w: 221, h: 54 };
+
+  it('keeps a box recorded at the reference width', () => {
+    expect(placeBox(box, click(200, 920, 1280), 'desktop')).toEqual(box);
+  });
+
+  it('moves a desktop box with the centred column, keeping its size', () => {
+    expect(placeBox(box, click(200, 920, 1440), 'desktop')).toEqual({ x: 37, y: 900, w: 221, h: 54 });
+  });
+
+  it('scales a phone box with the width', () => {
+    expect(placeBox({ x: 39, y: 100, w: 312, h: 50 }, click(50, 120, 390, 'mobile'), 'mobile')).toEqual({ x: 37.5, y: 100, w: 300, h: 50 });
+  });
+});
+
+describe('elementMarks', () => {
+  const box = { x: 117, y: 900, w: 221, h: 54 };
+  const clicks: HeatmapClick[] = [
+    { ...click(220, 925, 1280), key: '#buy', box }, // newest
+    { ...click(130, 905, 1280), key: '#buy', box: { ...box, y: 1000 } },
+    { ...click(100, 100, 1280), key: 'a "Home"' }, // recorded before boxes
+    { ...click(120, 110, 1280), key: 'a "Home"' },
+    { ...click(-500, 10, 1280), key: 'div.off' }, // off the canvas
+  ];
+  const ranked = [
+    { rank: 1, key: '#buy' },
+    { rank: 2, key: 'a "Home"' },
+    { rank: 3, key: 'div.off' },
+    { rank: 4, key: '#not-in-the-response' },
+  ];
+
+  it("puts a badge at the centre of the element's newest box", () => {
+    expect(elementMarks(clicks, 'desktop', ranked)[0]).toEqual({ rank: 1, key: '#buy', x: 227.5, y: 927, box });
+  });
+
+  it('falls back to the middle of its clicks without a box', () => {
+    expect(elementMarks(clicks, 'desktop', ranked)[1]).toEqual({ rank: 2, key: 'a "Home"', x: 110, y: 105, box: null });
+  });
+
+  it('skips elements with nothing on the canvas, and stops at the badge count', () => {
+    expect(elementMarks(clicks, 'desktop', ranked).map((mark) => mark.rank)).toEqual([1, 2]);
+    expect(elementMarks(clicks, 'desktop', ranked, 1).map((mark) => mark.rank)).toEqual([1]);
+  });
+});
+
+describe('heat colours', () => {
+  it('is transparent with no clicks and red at the hottest spot', () => {
+    expect(heatColor(0)[3]).toBe(0);
+    expect(heatColor(1)).toEqual([255, 0, 0, 217]);
+  });
+
+  it('runs blue → cyan → green → yellow → red', () => {
+    expect(heatColor(0.25).slice(0, 3)).toEqual([0, 0, 255]);
+    expect(heatColor(0.45).slice(0, 3)).toEqual([0, 255, 255]);
+    expect(heatColor(0.6).slice(0, 3)).toEqual([0, 255, 0]);
+    expect(heatColor(0.8).slice(0, 3)).toEqual([255, 255, 0]);
+  });
+
+  it('never gets less opaque as the heat rises, and clamps out-of-range input', () => {
+    const alphas = Array.from({ length: 101 }, (_, i) => heatColor(i / 100)[3]);
+    for (let i = 1; i < alphas.length; i++) expect(alphas[i]).toBeGreaterThanOrEqual(alphas[i - 1]);
+    expect(heatColor(-1)).toEqual(heatColor(0));
+    expect(heatColor(2)).toEqual(heatColor(1));
+  });
+
+  it('builds a 256-entry lookup table', () => {
+    const table = heatPalette();
+    expect(table).toHaveLength(1024);
+    expect([...table.slice(1020)]).toEqual(heatColor(1));
+  });
+
+  it('lets the busiest spot reach full heat, within limits', () => {
+    expect(heatAlpha([])).toBe(0);
+    expect(heatAlpha([{ x: 5, y: 5 }])).toBe(0.6);
+    expect(heatAlpha(Array.from({ length: 10 }, () => ({ x: 5, y: 5 })))).toBeCloseTo(0.12);
+    expect(heatAlpha(Array.from({ length: 1000 }, () => ({ x: 5, y: 5 })))).toBe(0.04);
+  });
+});
+
+describe('elementLabel', () => {
+  const base = { key: 'k', selector: null, tag: null, id: null, classes: null, text: null };
+
+  it('names an element by its text, else #id, else tag and first class', () => {
+    expect(elementLabel({ ...base, text: 'Add to cart', id: 'add-1', tag: 'button', selector: '#add-1' })).toEqual({ name: 'Add to cart', detail: '#add-1' });
+    expect(elementLabel({ ...base, id: 'cart-link', tag: 'a' }).name).toBe('#cart-link');
+    expect(elementLabel({ ...base, tag: 'div', classes: 'product-image tone-2' }).name).toBe('div.product-image');
+    expect(elementLabel({ ...base, key: '?' })).toEqual({ name: '?', detail: '?' });
+  });
+
+  it('shortens long text', () => {
+    expect(elementLabel({ ...base, text: 'x'.repeat(60) }).name).toBe(`${'x'.repeat(39)}…`);
   });
 });

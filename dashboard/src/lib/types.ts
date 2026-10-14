@@ -4,11 +4,21 @@ import type { OptionsKey } from './filters';
 export type EventType = 'page_view' | 'click';
 export type Device = 'mobile' | 'tablet' | 'desktop';
 
+/** An element's box in page px, as the tracker measured it. */
+export interface Box {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface ClickTarget {
   tag?: string;
   id?: string;
   classes?: string;
   text?: string;
+  selector?: string; // a short CSS path, from the nearest id
+  box?: Box;
 }
 
 export interface TrackedEvent {
@@ -95,6 +105,8 @@ export interface HeatmapClick {
   viewport_w: number;
   viewport_h: number;
   device: Device;
+  key?: string; // the element clicked (GET /api/elements)
+  box?: Box; // that element's box, when the tracker recorded one
 }
 
 /** GET /api/heatmap */
@@ -103,6 +115,29 @@ export interface HeatmapResponse {
   device: Device | 'all';
   total_clicks: number; // uncapped; clicks holds the newest 5000 at most
   clicks: HeatmapClick[];
+}
+
+/** One row of GET /api/elements */
+export interface RankedElement {
+  rank: number;
+  key: string; // the selector, else #id, else tag, classes and text
+  selector: string | null;
+  tag: string | null;
+  id: string | null;
+  classes: string | null;
+  text: string | null;
+  clicks: number;
+  share: number; // 0–1 of the page's clicks
+  sessions: number;
+}
+
+/** GET /api/elements */
+export interface ElementsResponse {
+  page_url: string;
+  device: Device | 'all';
+  total_clicks: number;
+  total_elements: number;
+  elements: RankedElement[]; // the top 50
 }
 
 export interface OverviewTotals {

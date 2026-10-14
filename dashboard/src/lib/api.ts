@@ -48,6 +48,10 @@ export const pagesUrl = (filters: ApiFilterParams = {}) =>
 export const heatmapUrl = (page: string, device: Device, filters: ApiFilterParams = {}) =>
   `${API_URL}/api/heatmap?${new URLSearchParams({ page, device })}${apiFilterQuery(filters)}`;
 
+// The page's elements ranked by clicks, for the same page, device and segment as the heatmap.
+export const elementsUrl = (page: string, device: Device, filters: ApiFilterParams = {}) =>
+  `${API_URL}/api/elements?${new URLSearchParams({ page, device })}${apiFilterQuery(filters)}`;
+
 export const overviewUrl = (filters: ApiFilterParams = {}) =>
   `${API_URL}/api/overview${apiFilterQuery(filters).replace(/^&/, '?')}`;
 

@@ -1,21 +1,23 @@
 'use client';
 
-import { CircleDot, Eye, EyeOff, Grid3x3 } from 'lucide-react';
+import { ChevronsRight, CircleDot, Eye, EyeOff, Flame, Grid3x3, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
+import Link from 'next/link';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { DEVICE_META } from '@/components/DeviceLabel';
+import ElementsSidebar from '@/components/ElementsSidebar';
 import Heatmap, { type HeatmapMode } from '@/components/Heatmap';
 import PageHeading from '@/components/PageHeading';
 import PageSelector from '@/components/PageSelector';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import ToggleGroup, { type ToggleOption } from '@/components/ToggleGroup';
-import { DEMO_URL, heatmapUrl, pagesUrl, useApi } from '@/lib/api';
+import { DEMO_URL, elementsUrl, heatmapUrl, pagesUrl, useApi } from '@/lib/api';
 import { pathOf } from '@/lib/format';
-import { layoutClicks } from '@/lib/heatmap';
+import { elementLabel, elementMarks, layoutClicks } from '@/lib/heatmap';
 import { useApiFilters, useDashboardHref, useFilters } from '@/lib/navigation';
 import { isWatched, toggleWatch } from '@/lib/segments';
 import { useWatchlist } from '@/lib/storage';
-import type { Device, HeatmapResponse, PagesResponse } from '@/lib/types';
+import type { Device, ElementsResponse, HeatmapResponse, PagesResponse } from '@/lib/types';
 
 const DEVICES: ToggleOption<Device>[] = (['desktop', 'tablet', 'mobile'] as const).map((device) => ({
   value: device,
@@ -24,6 +26,7 @@ const DEVICES: ToggleOption<Device>[] = (['desktop', 'tablet', 'mobile'] as cons
 const MODES: ToggleOption<HeatmapMode>[] = [
   { value: 'dots', label: 'Dots', icon: CircleDot },
   { value: 'grid', label: 'Grid', icon: Grid3x3 },
+  { value: 'heat', label: 'Heat', icon: Flame },
 ];
 
 const parseDevice = (value: string | null): Device =>
@@ -39,6 +42,20 @@ function Legend({ mode }: { mode: HeatmapMode }) {
       </span>
     );
   }
+  if (mode === 'heat') {
+    return (
+      <span className="inline-flex items-center gap-2">
+        Hot
+        {/* The heat palette, hot to cold (lib/heatmap.ts heatColor). */}
+        <span
+          className="h-2.5 w-28 rounded-full"
+          style={{ background: 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff)' }}
+          aria-hidden="true"
+        />
+        Cold
+      </span>
+    );
+  }
   return (
     <span className="inline-flex items-center gap-2">
       Fewer
@@ -46,6 +63,10 @@ function Legend({ mode }: { mode: HeatmapMode }) {
       More clicks per 40 px cell
     </span>
   );
+}
+
+function Chip({ children }: { children: ReactNode }) {
+  return <span className="rounded-md border border-line bg-surface-2 px-2 py-0.5 tabular-nums text-ink-2">{children}</span>;
 }
 
 /** Adds the page to My watchlist on the Overview (stored in this browser). */
@@ -71,7 +92,12 @@ export default function HeatmapView() {
   const params = useSearchParams();
   const hrefFor = useDashboardHref();
   const device = parseDevice(params.get('device'));
-  const mode: HeatmapMode = params.get('mode') === 'grid' ? 'grid' : 'dots';
+  const modeParam = params.get('mode');
+  const mode: HeatmapMode = modeParam === 'grid' || modeParam === 'heat' ? modeParam : 'dots';
+  // The element heatmap: one ranked element's clicks alone.
+  const focus = params.get('element');
+  const [hovered, setHovered] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const filters = useFilters();
   const apiFilters = useApiFilters();
@@ -93,10 +119,27 @@ export default function HeatmapView() {
   const heatmap = useApi<HeatmapResponse>(page && !deviceFiltered ? heatmapUrl(page, device, apiFilters) : null, {
     keepPreviousData: true,
   });
+  const elements = useApi<ElementsResponse>(page && !deviceFiltered ? elementsUrl(page, device, apiFilters) : null, {
+    keepPreviousData: true,
+  });
   const layout = useMemo(
     () => (heatmap.data ? layoutClicks(heatmap.data.clicks, parseDevice(heatmap.data.device)) : null),
     [heatmap.data],
   );
+  // Badges only when the ranking is for the same page and device as the clicks on screen.
+  const ranking =
+    elements.data && heatmap.data && elements.data.page_url === heatmap.data.page_url && elements.data.device === heatmap.data.device
+      ? elements.data
+      : undefined;
+  const marks = useMemo(
+    () => (heatmap.data && ranking ? elementMarks(heatmap.data.clicks, parseDevice(heatmap.data.device), ranking.elements) : []),
+    [heatmap.data, ranking],
+  );
+  const shownLayout = useMemo(
+    () => (layout && focus ? { ...layout, points: layout.points.filter((point) => point.key === focus) } : layout),
+    [layout, focus],
+  );
+  const focusedElement = focus ? ranking?.elements.find((element) => element.key === focus) : undefined;
 
   const heading = (
     <PageHeading title="Heatmaps">
@@ -124,6 +167,7 @@ export default function HeatmapView() {
   const data = heatmap.data;
   // What is on screen, which lags the URL while the next response loads.
   const shownDevice = parseDevice(data?.device ?? device);
+  const pageViews = pages.data?.data.find((row) => row.page_url === data?.page_url)?.page_views;
 
   // Below the toolbar: the drawing, or why there isn't one.
   const stage = deviceFiltered ? (
@@ -134,7 +178,7 @@ export default function HeatmapView() {
     <>
       {heatmap.error && <ErrorState error={heatmap.error} stale={Boolean(data)} />}
       {!data && !heatmap.error && <LoadingState />}
-      {data && layout && (
+      {data && layout && shownLayout && (
         <div className={heatmap.isLoading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
           {data.total_clicks === 0 ? (
             <EmptyState title={`No ${DEVICE_META[shownDevice].label.toLowerCase()} clicks on ${pathOf(data.page_url)} yet`}>
@@ -142,14 +186,38 @@ export default function HeatmapView() {
             </EmptyState>
           ) : (
             <div className="rounded-xl border border-line bg-surface p-3 shadow-xs">
-              <Heatmap pageUrl={data.page_url} layout={layout} mode={mode} />
+              {focus && (
+                <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-surface-2 px-3 py-2 text-sm">
+                  <span>
+                    Only{' '}
+                    <span className="font-medium">{focusedElement ? elementLabel(focusedElement).name : <span className="font-mono">{focus}</span>}</span>
+                    : {plural(shownLayout.points.length, 'click')}
+                  </span>
+                  <Link
+                    href={hrefFor({ element: null })}
+                    scroll={false}
+                    className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                  >
+                    <X className="size-3.5" aria-hidden="true" />
+                    Show all clicks
+                  </Link>
+                </div>
+              )}
+              <Heatmap pageUrl={data.page_url} layout={shownLayout} mode={mode} marks={marks} highlight={hovered} focus={focus} />
               <div className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-xs text-ink-3">
-                <p>
-                  <span className="font-medium text-ink-2">{plural(layout.points.length, 'click')}</span> on the{' '}
-                  {DEVICE_META[shownDevice].label.toLowerCase()} layout ({layout.width} px wide)
+                <p className="flex flex-wrap items-center gap-2">
+                  {pageViews !== undefined && (
+                    <Chip>
+                      {plural(pageViews, 'page view')}
+                      {filters.devices.length > 1 && ' (all devices)'}
+                    </Chip>
+                  )}
+                  <Chip>{plural(data.total_clicks, 'click')}</Chip>
+                  <span>
+                    on the {DEVICE_META[shownDevice].label.toLowerCase()} layout ({layout.width} px wide)
                   {layout.outside > 0 && ` · ${plural(layout.outside, 'click')} fell outside it`}
-                  {data.total_clicks > data.clicks.length &&
-                    ` · showing the newest ${data.clicks.length.toLocaleString()} of ${data.total_clicks.toLocaleString()}`}
+                  {data.total_clicks > data.clicks.length && ` · showing the newest ${data.clicks.length.toLocaleString()}`}
+                  </span>
                 </p>
                 <Legend mode={mode} />
               </div>
@@ -178,7 +246,32 @@ export default function HeatmapView() {
         <ToggleGroup label="Show" options={MODES} value={mode} hrefFor={(value) => hrefFor({ mode: value === 'dots' ? null : value })} />
         <WatchPageButton pageUrl={data?.page_url ?? page} />
       </div>
-      {stage}
+      {deviceFiltered ? (
+        stage
+      ) : (
+        // One column under lg, with the ranking after the page; beside it from lg.
+        <div className={sidebarOpen ? 'grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]' : ''}>
+          {sidebarOpen ? (
+            <ElementsSidebar
+              data={ranking}
+              focus={focus}
+              focusHrefFor={(key) => hrefFor({ element: key })}
+              onHover={setHovered}
+              onCollapse={() => setSidebarOpen(false)}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="mb-3 inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-sm font-medium text-ink-2 hover:bg-surface-2 hover:text-ink"
+            >
+              <ChevronsRight className="size-4" aria-hidden="true" />
+              Show ranking
+            </button>
+          )}
+          <div className="min-w-0">{stage}</div>
+        </div>
+      )}
     </>
   );
 }

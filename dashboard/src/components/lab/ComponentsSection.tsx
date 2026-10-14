@@ -17,9 +17,9 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import ToggleGroup from '@/components/ToggleGroup';
 import { ApiError } from '@/lib/api';
 import { ALL_DEVICES, FILTER_DEFS, type Filters } from '@/lib/filters';
-import { layoutClicks } from '@/lib/heatmap';
+import { elementMarks, layoutClicks } from '@/lib/heatmap';
 import type { Device } from '@/lib/types';
-import { LAB_CLICKS, LAB_EVENTS, LAB_HEATMAP_PAGE, LAB_OVERVIEW } from './fixtures';
+import { LAB_CLICKS, LAB_EVENTS, LAB_HEATMAP_PAGE, LAB_OVERVIEW, LAB_RANKING } from './fixtures';
 
 function Specimen({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
   return (
@@ -35,6 +35,7 @@ function Specimen({ title, note, children }: { title: string; note?: string; chi
 
 const devices: Device[] = ['desktop', 'tablet', 'mobile'];
 const layout = layoutClicks(LAB_CLICKS, 'desktop');
+const marks = elementMarks(LAB_CLICKS, 'desktop', LAB_RANKING);
 const labFilters: Filters = { range: 'all', devices: [...ALL_DEVICES], params: { browsers: 'Chrome', min_duration: '10' } };
 const defNamed = (id: string) => FILTER_DEFS.find((def) => def.id === id)!;
 const noop = () => {};
@@ -147,10 +148,22 @@ export default function ComponentsSection() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Specimen title="Heatmap: dots" note="sample clicks on the live demo page">
-          <Heatmap pageUrl={LAB_HEATMAP_PAGE} layout={layout} mode="dots" />
+          <Heatmap pageUrl={LAB_HEATMAP_PAGE} layout={layout} mode="dots" marks={marks} />
         </Specimen>
         <Specimen title="Heatmap: grid">
-          <Heatmap pageUrl={LAB_HEATMAP_PAGE} layout={layout} mode="grid" />
+          <Heatmap pageUrl={LAB_HEATMAP_PAGE} layout={layout} mode="grid" marks={marks} />
+        </Specimen>
+        <Specimen title="Heatmap: heat" note="canvas, cold to hot; badge 2 highlighted as when hovered in the ranking">
+          <Heatmap pageUrl={LAB_HEATMAP_PAGE} layout={layout} mode="heat" marks={marks} highlight="#add-ethiopia" />
+        </Specimen>
+        <Specimen title="Heatmap: one element" note="?element= — only its clicks, its box outlined">
+          <Heatmap
+            pageUrl={LAB_HEATMAP_PAGE}
+            layout={{ ...layout, points: layout.points.filter((point) => point.key === '#add-espresso') }}
+            mode="heat"
+            marks={marks}
+            focus="#add-espresso"
+          />
         </Specimen>
       </div>
     </section>

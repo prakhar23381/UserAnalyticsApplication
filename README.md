@@ -62,7 +62,11 @@ events are marked on the timeline.
 ![User journey](docs/images/journey.png)
 
 **Heatmaps.** Clicks drawn over the live page at a fixed width per device, as
-dots or a 40 px grid.
+dots, a 40 px grid, or Heat (a cold-to-hot gradient on a `<canvas>`, stretched
+so the busiest spot is the hottest). A sidebar ranks the page's elements by
+clicks for the segment and device, and the top 10 carry the same numbered
+badge on the page. Each element can be shown alone (its clicks only, its box
+outlined), and its selector copied. The footer gives page views and clicks.
 
 ![Click heatmap](docs/images/heatmap.png)
 
@@ -795,6 +799,11 @@ collection, the API then builds it from the events.
   centred-column desktop sites and close for fluid phone layouts. It is wrong
   for full-width or left-aligned desktop layouts. Positions relative to the
   clicked element would be the next step.
+- A badge sits at the centre of the element's box as the tracker measured it,
+  mapped to the reference width like its clicks. Clicks recorded before the
+  tracker sent boxes have none, so their badge sits at the middle of their
+  clicks. Heat is relative to the page: one click on a quiet page is as red as
+  a hundred on a busy one, and the sidebar has the exact numbers.
 - There is no "all devices" heatmap. Drawing phone clicks on the desktop
   layout would put them on the wrong elements. The API still accepts
   `device=all`.
@@ -913,7 +922,7 @@ collection, the API then builds it from the events.
     ├── vercel.json             install command for Vercel
     └── src/
         ├── app/                / (Overview · Sessions · Heatmaps tabs), /lab (local only); old routes redirect
-        ├── components/         filter bar (popover, filter menu and editors), tabs, Overview (stat tiles, insight cards, chart, top pages, devices, value bars), insight chips, tables, journey timeline, heatmap canvas, states, lab/
+        ├── components/         filter bar (popover, filter menu and editors), tabs, Overview (stat tiles, insight cards, chart, top pages, devices, value bars), insight chips, heatmap (canvas heat layer, badges, ranked-elements sidebar), tables, journey timeline, heatmap canvas, states, lab/
         └── lib/                API client, URL state, filters, overview maths, heatmap maths, formatting, with unit tests
 ```
 

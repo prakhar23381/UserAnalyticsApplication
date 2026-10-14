@@ -13,6 +13,9 @@ const sessionSchema = new mongoose.Schema(
     event_count: { type: Number, required: true },
     page_views: { type: Number, required: true },
     clicks: { type: Number, required: true },
+    rage_clicks: { type: Number, default: 0 }, // lib/insights.js: bursts of rapid clicks
+    dead_clicks: { type: Number, default: 0 }, // clicks the tracker saw change nothing
+    quick_backs: { type: Number, default: 0 }, // pages left again within 7 s
     pages: [String], // distinct normalized page URLs, in the order first visited
     entry_page: String,
     exit_page: String,

@@ -44,6 +44,11 @@ describe('GET /api/filters', () => {
         { value: HOME, sessions: 2 },
         { value: PRODUCTS, sessions: 1 },
       ],
+      insights: [
+        { value: 'rage', sessions: 0 },
+        { value: 'dead', sessions: 0 },
+        { value: 'quick_back', sessions: 0 },
+      ],
     });
   });
 

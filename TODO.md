@@ -35,7 +35,7 @@ Plan and decisions: `docs/v2-plan.md` (approved direction 2026-10-15). Work on t
 `v2` branch; `main` stays the submitted version. **Each milestone needs its own
 detailed plan and approval before code changes.**
 
-- [ ] **[S] M3** Insights: rage clicks, quick backs (server), dead clicks (tracker); Overview insight cards; session insight chips
+- [ ] **[S] M3** Insights (plan: `docs/v2-plan.md`, "M3 in detail"). M3a server + seed done (local commit). Left: **M3b** tracker dead clicks + browser check; **M3c** Overview insight cards, session chips, journey markers, Insights filter, watchlist shares; re-seed local DB (needs the user's double confirmation)
 - [ ] **[S] M4** Heatmaps v2: Heat display, legend and counts, element identity (selector + box), ranked elements with badges, element heatmap, area tool, CSV export
 - [ ] **[S] M5** Engagement: page-view id, end-of-visit summary, scroll heatmap, attention map, excessive scrolling
 - [ ] **[S] M6** Custom tags (`window.trailmark.tag`), session labels, comparing two segments, privacy opt-outs (`data-cf-ignore`, `data-strip-query`), single-page-app page views

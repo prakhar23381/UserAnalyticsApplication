@@ -22,6 +22,7 @@ const eventSchema = new mongoose.Schema(
     x: Number,
     y: Number,
     target: targetSchema,
+    dead: Boolean, // true when nothing on the page changed within 1 s (tracker); absent otherwise
 
     // both types: needed to compare clicks across screen sizes
     viewport_w: Number,

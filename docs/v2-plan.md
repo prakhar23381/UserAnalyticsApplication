@@ -180,3 +180,29 @@ M2a runs there.
 
 **New endpoint:** `GET /api/filters?from=&to=`: the values in the range with
 session counts, for the filter menus.
+
+## M3 in detail (approved 2026-10-15)
+
+Three commits on `v2`: **M3a** server and seed, **M3b** tracker (dead clicks),
+**M3c** dashboard.
+
+| # | Decision | Choice |
+|---|---|---|
+| M3-D1 | Rage-click radius | Every click of a burst within 30 px of the burst's **first** click, so a burst can't drift across the page |
+| M3-D2 | Dead-click delivery | The tracker **holds a click for 1 s**, then sends it with `dead: true` if nothing changed; a click held when the page is left goes out at once without the flag. No new event type |
+| M3-D3 | Which clicks can be dead | All clicks except form fields, labels, `contenteditable` and ctrl/⌘/shift clicks (they focus or open a tab) |
+| M3-D4 | Existing sessions | `npm -w server run sessions:rebuild` once on the local databases; production builds its sessions with insights at first start anyway |
+
+**Definitions** (D9), from a session's events sorted by `{ timestamp, _id }`:
+- **Rage click:** ≥ 3 consecutive clicks on the same page, each ≤ 700 ms after
+  the one before and within 30 px of the first. Counted per burst.
+- **Dead click:** a click stored with `dead: true`. Clicks stored before M3b
+  have no flag and count as not dead.
+- **Quick back:** page views A → B → A (A ≠ B) with < 7 s on B. Counted per B.
+
+**Session fields:** `rage_clicks`, `dead_clicks`, `quick_backs` (counts).
+**Filter:** `insights=rage,dead,quick_back`, a list where a session needs
+**all** the listed insights. **Responses add:** overview totals
+`rage_sessions`, `dead_sessions`, `quick_back_sessions`; the three counts on
+session rows; `rage: true` / `quick_back: true` on journey events; an
+`insights` facet in `GET /api/filters`.

@@ -50,6 +50,13 @@ describe('validateEvent', () => {
     });
   });
 
+  it('keeps dead: true on a click only, and rejects a dead flag that is not a boolean', () => {
+    expect(validateEvent({ ...click, dead: true }).value.dead).toBe(true);
+    expect(validateEvent({ ...click, dead: false }).value).not.toHaveProperty('dead');
+    expect(validateEvent({ ...pageView, dead: true }).value).not.toHaveProperty('dead');
+    expect(validateEvent({ ...click, dead: 'yes' })).toEqual({ ok: false, error: 'dead must be true or false' });
+  });
+
   it('drops unknown fields and never trusts a client-sent device', () => {
     const result = validateEvent({ ...pageView, device: 'mobile', is_admin: true, x: 5, y: 5 });
     expect(result.value.device).toBe('desktop');

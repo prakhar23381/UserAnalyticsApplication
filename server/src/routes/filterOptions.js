@@ -1,5 +1,6 @@
 import express from 'express';
 import { parseFilters, rangeCondition } from '../lib/filters.js';
+import { INSIGHTS } from '../lib/insights.js';
 import { Session } from '../models/Session.js';
 
 const MAX_VALUES = 100;
@@ -37,11 +38,23 @@ router.get('/filters', async (req, res) => {
         entry_pages: values('entry_page'),
         exit_pages: values('exit_page'),
         pages: [{ $unwind: '$pages' }, ...values('pages')],
+        insights: [
+          {
+            $group: {
+              _id: null,
+              rage: { $sum: { $cond: [{ $gt: ['$rage_clicks', 0] }, 1, 0] } },
+              dead: { $sum: { $cond: [{ $gt: ['$dead_clicks', 0] }, 1, 0] } },
+              quick_back: { $sum: { $cond: [{ $gt: ['$quick_backs', 0] }, 1, 0] } },
+            },
+          },
+        ],
       },
     },
   ]);
 
-  res.json(result);
+  // Every insight is listed, with 0 when no session has it, in the order the menus show them.
+  const [counts = {}] = result.insights;
+  res.json({ ...result, insights: INSIGHTS.map((value) => ({ value, sessions: counts[value] ?? 0 })) });
 });
 
 export default router;

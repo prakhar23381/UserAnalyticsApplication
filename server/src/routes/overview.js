@@ -23,13 +23,26 @@ const TOTALS = [
       clicks: { $sum: '$clicks' },
       duration_ms: { $avg: '$duration_ms' },
       bounces: { $sum: { $cond: [{ $lte: ['$page_views', 1] }, 1, 0] } },
+      rage_sessions: { $sum: { $cond: [{ $gt: ['$rage_clicks', 0] }, 1, 0] } },
+      dead_sessions: { $sum: { $cond: [{ $gt: ['$dead_clicks', 0] }, 1, 0] } },
+      quick_back_sessions: { $sum: { $cond: [{ $gt: ['$quick_backs', 0] }, 1, 0] } },
     },
   },
 ];
 
 function shapeTotals(row) {
   if (!row) {
-    return { sessions: 0, page_views: 0, clicks: 0, avg_duration_ms: 0, pages_per_session: 0, bounce_rate: 0 };
+    return {
+      sessions: 0,
+      page_views: 0,
+      clicks: 0,
+      avg_duration_ms: 0,
+      pages_per_session: 0,
+      bounce_rate: 0,
+      rage_sessions: 0,
+      dead_sessions: 0,
+      quick_back_sessions: 0,
+    };
   }
   return {
     sessions: row.sessions,
@@ -38,6 +51,10 @@ function shapeTotals(row) {
     avg_duration_ms: Math.round(row.duration_ms),
     pages_per_session: round(row.page_views / row.sessions, 2),
     bounce_rate: round(row.bounces / row.sessions, 4), // share of sessions with at most one page view
+    // sessions with at least one of each insight (lib/insights.js)
+    rage_sessions: row.rage_sessions,
+    dead_sessions: row.dead_sessions,
+    quick_back_sessions: row.quick_back_sessions,
   };
 }
 

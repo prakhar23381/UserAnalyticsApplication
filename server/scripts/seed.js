@@ -24,6 +24,8 @@ const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 const DAY = 24 * 60 * MINUTE;
 const MAX_PAGES_PER_SESSION = 6;
+const RAGE_SHARE = 0.4; // of photo clicks: the visitor keeps clicking the photo
+const QUICK_BACK_SHARE = 0.12; // of link clicks: the visitor comes straight back
 const ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
 export const PAGES = { home: '/demo/', products: '/demo/products.html', about: '/demo/about.html' };
@@ -255,6 +257,13 @@ function weighted(random, options) {
   return options.at(-1)[0];
 }
 
+/** A point near another, kept inside the box: how a frustrated visitor clicks the same spot. */
+function pointNear(random, { x, y }, [left, top, width, height]) {
+  const jitter = () => Math.round((random() - 0.5) * 20);
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+  return { x: clamp(x + jitter(), left, left + width), y: clamp(y + jitter(), top, top + height) };
+}
+
 /** A point inside a box, usually near its middle: [left, top, width, height] → { x, y }. */
 function pointIn(random, [left, top, width, height]) {
   const offset = () => (random() + random()) / 2;
@@ -315,16 +324,37 @@ function generateSession(random, { baseUrl, now }) {
           : between(random, 2, 10) * SECOND;
       time = Math.round(time);
       const target = name === 'cart' ? { ...element.target, text: `Cart ${cart}` } : element.target;
-      events.push({
-        ...common,
-        type: 'click',
-        timestamp: new Date(time).toISOString(),
-        ...pointIn(random, box[name]),
-        target,
-      });
+      // A product photo does nothing when clicked: the tracker flags the click as dead.
+      const photo = name.startsWith('img-');
+      const click = { ...common, type: 'click', ...pointIn(random, box[name]), target, ...(photo && { dead: true }) };
+      events.push({ ...click, timestamp: new Date(time).toISOString() });
+      // Some visitors keep clicking the photo, quickly and on the same spot: rage clicks.
+      if (photo && random() < RAGE_SHARE) {
+        const more = 2 + Math.floor(random() * 3);
+        for (let r = 0; r < more; r++) {
+          time = Math.round(time + between(random, 0.15, 0.5) * SECOND);
+          events.push({ ...click, ...pointNear(random, click, box[name]), timestamp: new Date(time).toISOString() });
+        }
+      }
       if (name.startsWith('add-')) cart += 1;
       if (element.opens) next = element.opens;
     });
+
+    // Some visitors open a link and come straight back (a quick back): the page
+    // they left loads again, and the visit carries on there.
+    if (next && next !== page && visit < MAX_PAGES_PER_SESSION - 1 && random() < QUICK_BACK_SHARE) {
+      time = Math.round(time + between(random, 0.3, 1.5) * SECOND);
+      events.push({
+        ...common,
+        type: 'page_view',
+        page_url: new URL(PAGES[next], baseUrl).href,
+        referrer: url,
+        doc_h: doc_h[next],
+        timestamp: new Date(time).toISOString(),
+      });
+      time = Math.round(time + between(random, 2, 6) * SECOND);
+      continue; // the same page again, with its original referrer
+    }
 
     if (!next) break;
     time = Math.round(time + between(random, 0.3, 1.5) * SECOND);

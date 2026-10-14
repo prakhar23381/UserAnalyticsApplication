@@ -1,5 +1,6 @@
 import { DEVICES } from '../models/Event.js';
 import { Session } from '../models/Session.js';
+import { INSIGHTS } from './insights.js';
 import { normalizeUrl } from './normalizeUrl.js';
 import { BROWSER_NAMES, OS_NAMES } from './userAgent.js';
 
@@ -15,6 +16,7 @@ import { BROWSER_NAMES, OS_NAMES } from './userAgent.js';
 //   visited_page                one page URL each, normalized like page_url
 //   min_/max_duration (seconds), min_/max_pages (page views), min_/max_clicks
 //                               whole numbers, inclusive
+//   insights                    comma-separated: rage, dead, quick_back; a session needs all of them
 //
 // A segment is a set of sessions: list views read the sessions collection, and
 // event views (heatmap, pages) count the events of the matching sessions.
@@ -50,6 +52,8 @@ const NUMBERS = [
   ['min_pages', 'max_pages', 'page_views', 1],
   ['min_clicks', 'max_clicks', 'clicks', 1],
 ];
+// Each insight's count on the session document (lib/insights.js).
+const INSIGHT_FIELDS = { rage: 'rage_clicks', dead: 'dead_clicks', quick_back: 'quick_backs' };
 
 /** Every query parameter the segment reads. */
 export const SEGMENT_PARAMS = [
@@ -59,6 +63,7 @@ export const SEGMENT_PARAMS = [
   ...Object.keys(TEXTS),
   ...Object.keys(PAGES),
   ...NUMBERS.flatMap(([min, max]) => [min, max]),
+  'insights',
 ];
 
 const fail = (error) => ({ ok: false, error });
@@ -96,6 +101,15 @@ function parseNumber(name, value) {
   return { ok: true, value: Number(value) };
 }
 
+function parseInsights(name, value) {
+  if (value.length > MAX_LIST_LENGTH) return fail(`${name} is too long`);
+  const items = [...new Set(value.split(',').map((v) => v.trim()).filter(Boolean))];
+  if (items.length === 0 || !items.every((v) => INSIGHTS.includes(v))) {
+    return fail(`${name} must be a comma-separated list of: ${INSIGHTS.join(', ')}`);
+  }
+  return { ok: true, value: items };
+}
+
 const PARSERS = {
   from: parseInstant,
   to: parseInstant,
@@ -103,6 +117,7 @@ const PARSERS = {
   ...Object.fromEntries(Object.keys(TEXTS).map((name) => [name, parseText])),
   ...Object.fromEntries(Object.keys(PAGES).map((name) => [name, parsePage])),
   ...Object.fromEntries(NUMBERS.flatMap(([min, max]) => [[min, parseNumber], [max, parseNumber]])),
+  insights: parseInsights,
 };
 
 /**
@@ -157,6 +172,7 @@ export function sessionMatch(filters, { range = true } = {}) {
     if (filters[min] !== undefined) match[field] = { ...match[field], $gte: filters[min] * factor };
     if (filters[max] !== undefined) match[field] = { ...match[field], $lte: filters[max] * factor };
   }
+  for (const insight of filters.insights ?? []) match[INSIGHT_FIELDS[insight]] = { $gt: 0 };
   return match;
 }
 

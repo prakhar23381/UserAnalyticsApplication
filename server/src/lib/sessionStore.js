@@ -1,5 +1,6 @@
 import { Event } from '../models/Event.js';
 import { Session } from '../models/Session.js';
+import { findInsights } from './insights.js';
 import { parseUserAgent } from './userAgent.js';
 
 // Keeps the sessions collection in step with the events (M2-D1 in docs/v2-plan.md):
@@ -10,7 +11,7 @@ import { parseUserAgent } from './userAgent.js';
 const MAX_PAGES = 200;
 const MAX_UTM_LENGTH = 100;
 const REBUILD_CHUNK = 500;
-const FIELDS = { _id: 0, session_id: 1, type: 1, page_url: 1, raw_url: 1, timestamp: 1, device: 1, referrer: 1, user_agent: 1, country: 1 };
+const FIELDS = { _id: 0, session_id: 1, type: 1, page_url: 1, raw_url: 1, timestamp: 1, device: 1, referrer: 1, user_agent: 1, country: 1, x: 1, y: 1, dead: 1 };
 
 const hostOf = (url) => {
   try {
@@ -54,6 +55,7 @@ export function summarize(events) {
     event_count: events.length,
     page_views: events.filter((event) => event.type === 'page_view').length,
     clicks: events.filter((event) => event.type === 'click').length,
+    ...findInsights(events).counts,
     pages,
     entry_page: first.page_url,
     exit_page: last.page_url,

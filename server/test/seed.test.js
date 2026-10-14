@@ -155,6 +155,18 @@ describe('toDocuments', () => {
     expect(sessions.every((s) => s.browser !== 'Other' && s.os !== 'Other')).toBe(true);
   });
 
+  it('has rage clicks, dead clicks and quick backs, as the insights need', async () => {
+    await seed(documents);
+    const sessions = await Session.find().lean();
+    const share = (field) => sessions.filter((s) => s[field] > 0).length / sessions.length;
+    for (const field of ['rage_clicks', 'dead_clicks', 'quick_backs']) {
+      expect(share(field), field).toBeGreaterThan(0.02);
+      expect(share(field), field).toBeLessThan(0.3);
+    }
+    // Only the product photos, which do nothing, are dead.
+    for (const click of clicks) expect(click.dead === true).toBe(elementOf(click).startsWith('img-'));
+  });
+
   it('lands some visits on URL variants that normalize to the same page', () => {
     expect(documents.some((doc) => doc.raw_url.includes('?utm_source='))).toBe(true);
     expect(documents.some((doc) => doc.raw_url.endsWith('/demo/index.html'))).toBe(true);

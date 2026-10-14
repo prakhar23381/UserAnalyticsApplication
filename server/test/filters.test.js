@@ -19,6 +19,7 @@ describe('parseFilters', () => {
       entry_page: 'http://localhost:4000/demo/index.html?utm_source=x',
       min_duration: '30',
       max_pages: '4',
+      insights: 'dead, rage,dead',
     });
     expect(result).toEqual({
       ok: true,
@@ -34,6 +35,7 @@ describe('parseFilters', () => {
         entry_page: 'http://localhost:4000/demo',
         min_duration: 30,
         max_pages: 4,
+        insights: ['dead', 'rage'],
       },
     });
   });
@@ -54,6 +56,7 @@ describe('parseFilters', () => {
     [{ min_clicks: '-1' }, 'min_clicks must be a whole number'],
     [{ max_duration: '1.5' }, 'max_duration must be a whole number'],
     [{ min_pages: '5', max_pages: '2' }, 'min_pages must not be more than max_pages'],
+    [{ insights: 'rage,bored' }, 'insights must be a comma-separated list of: rage, dead, quick_back'],
   ])('rejects %j', (query, error) => {
     expect(parseFilters(query)).toEqual({ ok: false, error });
   });
@@ -89,6 +92,7 @@ describe('sessionMatch', () => {
       min_duration: '30',
       max_duration: '600',
       min_clicks: '1',
+      insights: 'rage,quick_back',
     });
     expect(sessionMatch(filters)).toEqual({
       first_seen: { $gte: from },
@@ -100,6 +104,8 @@ describe('sessionMatch', () => {
       exit_page: 'http://localhost:4000/demo',
       duration_ms: { $gte: 30_000, $lte: 600_000 },
       clicks: { $gte: 1 },
+      rage_clicks: { $gt: 0 },
+      quick_backs: { $gt: 0 },
     });
   });
 

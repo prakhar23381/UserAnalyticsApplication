@@ -1,5 +1,6 @@
 import express from 'express';
 import { parseFilters, sessionMatch } from '../lib/filters.js';
+import { findInsights } from '../lib/insights.js';
 import { SESSION_ID_RE } from '../lib/validateEvent.js';
 import { Event } from '../models/Event.js';
 import { Session } from '../models/Session.js';
@@ -26,6 +27,9 @@ export const SESSION_FIELDS = {
   event_count: 1,
   page_views: 1,
   clicks: 1,
+  rage_clicks: { $ifNull: ['$rage_clicks', 0] },
+  dead_clicks: { $ifNull: ['$dead_clicks', 0] },
+  quick_backs: { $ifNull: ['$quick_backs', 0] },
   first_seen: 1,
   last_seen: 1,
   duration_ms: 1,
@@ -82,8 +86,15 @@ router.get('/sessions/:id/events', async (req, res) => {
   if (events.length === 0) {
     return res.status(404).json({ error: 'Session not found' });
   }
+  // Clicks in a rage burst get rage: true; a page left again within 7 s gets quick_back: true.
+  const { rage, quickBacks } = findInsights(events);
+  const marked = events.map((event) => ({
+    ...event,
+    ...(rage.has(event) && { rage: true }),
+    ...(quickBacks.has(event) && { quick_back: true }),
+  }));
   // session: the same summary as a row of GET /api/sessions (null until it's built).
-  res.json({ session_id: id, session, events });
+  res.json({ session_id: id, session, events: marked });
 });
 
 export default router;

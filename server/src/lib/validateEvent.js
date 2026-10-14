@@ -93,6 +93,8 @@ export function validateEvent(input) {
     value.y = input.y;
     const target = cleanTarget(input.target);
     if (target) value.target = target;
+    if (input.dead !== undefined && typeof input.dead !== 'boolean') return fail('dead must be true or false');
+    if (input.dead === true) value.dead = true;
   }
 
   return { ok: true, value };

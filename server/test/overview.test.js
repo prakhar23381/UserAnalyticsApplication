@@ -33,8 +33,8 @@ describe('GET /api/overview', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       range: RANGE,
-      totals: { sessions: 2, page_views: 3, clicks: 1, avg_duration_ms: 30_000, pages_per_session: 1.5, bounce_rate: 0.5 },
-      previous: { sessions: 1, page_views: 1, clicks: 1, avg_duration_ms: 10_000, pages_per_session: 1, bounce_rate: 1 },
+      totals: { sessions: 2, page_views: 3, clicks: 1, avg_duration_ms: 30_000, pages_per_session: 1.5, bounce_rate: 0.5, rage_sessions: 0, dead_sessions: 0, quick_back_sessions: 0 },
+      previous: { sessions: 1, page_views: 1, clicks: 1, avg_duration_ms: 10_000, pages_per_session: 1, bounce_rate: 1, rage_sessions: 0, dead_sessions: 0, quick_back_sessions: 0 },
       series: [{ date: '2026-10-12', sessions: 2 }],
       top_pages: [
         { page_url: HOME, page_views: 2 },
@@ -82,7 +82,7 @@ describe('GET /api/overview', () => {
   it('returns zeros, not errors, when nothing matches', async () => {
     const res = await overview(RANGE);
     expect(res.status).toBe(200);
-    expect(res.body.totals).toEqual({ sessions: 0, page_views: 0, clicks: 0, avg_duration_ms: 0, pages_per_session: 0, bounce_rate: 0 });
+    expect(res.body.totals).toEqual({ sessions: 0, page_views: 0, clicks: 0, avg_duration_ms: 0, pages_per_session: 0, bounce_rate: 0, rage_sessions: 0, dead_sessions: 0, quick_back_sessions: 0 });
     expect(res.body.series).toEqual([{ date: '2026-10-12', sessions: 0 }]);
     expect(res.body.top_pages).toEqual([]);
     expect(res.body.devices).toEqual([]);

@@ -16,6 +16,12 @@
  * (pageX/pageY) and the clicked element's tag, id and classes, plus its text
  * for links, buttons and labels only. Form field values are never read.
  *
+ * Dead clicks: a click is held for 1 second. If nothing on the page changed
+ * (DOM, scroll position or URL) in that time, it is sent with `dead: true`. A
+ * click held when the page is left or hidden is sent at once, unflagged.
+ * Clicks on form fields, labels and editable text (they only focus) and
+ * ctrl/⌘/shift clicks (they open a new tab or window) are never flagged.
+ *
  * It does nothing inside an iframe or when the URL has ?cf_preview=1 (the
  * dashboard's heatmap preview), and never throws into the host page.
  */
@@ -30,11 +36,16 @@
   var TEXT_MAX = 80;
   var INTERACTIVE = 'a, button, input, select, textarea, label, [role="button"]';
   var TEXT_TAGS = { A: true, BUTTON: true, LABEL: true };
+  var DEAD_AFTER_MS = 1000; // a click that changed nothing for this long is dead
+  var FOCUS_ONLY = 'input, select, textarea, label';
 
   var endpoint;
   var queue = [];
   var timer = null;
   var memorySession = null; // used when localStorage is blocked
+  var held = []; // clicks waiting to be judged dead or not: { event, at, href }
+  var lastChange = 0; // when the page last changed (DOM or scroll), while clicks are held
+  var observer = null;
 
   // Wraps every entry point: an analytics script must never break the page.
   function safe(fn) {
@@ -110,7 +121,7 @@
 
   // ---- events ------------------------------------------------------------
 
-  function track(type, fields) {
+  function build(type, fields) {
     var root = document.documentElement;
     var event = {
       session_id: sessionId(),
@@ -124,10 +135,66 @@
       doc_h: root.scrollHeight,
     };
     for (var key in fields) event[key] = fields[key];
+    return event;
+  }
 
+  function enqueue(event) {
     queue.push(event);
     if (queue.length >= FLUSH_AT) flush();
     else if (!timer) timer = setTimeout(safe(flush), FLUSH_DELAY_MS);
+  }
+
+  function track(type, fields) {
+    enqueue(build(type, fields));
+  }
+
+  // ---- dead clicks -------------------------------------------------------
+
+  function changed() {
+    lastChange = Date.now();
+  }
+
+  // Watches the DOM only while a click is held, so the page pays nothing otherwise.
+  function watch() {
+    if (observer || typeof MutationObserver !== 'function') return;
+    observer = new MutationObserver(changed);
+    observer.observe(document.documentElement, { subtree: true, childList: true, attributes: true, characterData: true });
+  }
+
+  function unwatch() {
+    if (held.length > 0 || !observer) return;
+    observer.disconnect();
+    observer = null;
+  }
+
+  function hold(event) {
+    var item = { event: event, at: Date.now(), href: location.href };
+    held.push(item);
+    watch();
+    setTimeout(safe(function () {
+      settle(item, true);
+    }), DEAD_AFTER_MS);
+  }
+
+  // Queues a held click. Judged: flagged dead when nothing changed since it.
+  function settle(item, judge) {
+    var i = held.indexOf(item);
+    if (i === -1) return; // already sent
+    held.splice(i, 1);
+    if (judge && lastChange < item.at && location.href === item.href) item.event.dead = true;
+    enqueue(item.event);
+    unwatch();
+  }
+
+  // Leaving or hiding the page counts as a change: send every held click unflagged, now.
+  function sendAll() {
+    while (held.length > 0) settle(held[0], false);
+    flush();
+  }
+
+  function canBeDead(e, el) {
+    if (e.ctrlKey || e.metaKey || e.shiftKey) return false;
+    return !el.closest(FOCUS_ONLY) && !el.isContentEditable;
   }
 
   // Names the element worth naming: the nearest link, button or field, else what was clicked.
@@ -157,7 +224,9 @@
       x = box.left + box.width / 2 + window.scrollX;
       y = box.top + box.height / 2 + window.scrollY;
     }
-    track('click', { x: Math.round(x), y: Math.round(y), target: described.target });
+    var event = build('click', { x: Math.round(x), y: Math.round(y), target: described.target });
+    if (canBeDead(e, el)) hold(event);
+    else enqueue(event);
   }
 
   // ---- sending -----------------------------------------------------------
@@ -196,15 +265,17 @@
     endpoint = resolveEndpoint(document.currentScript);
     if (!endpoint) return;
 
-    window.__cfTracker = { flush: safe(flush) };
+    window.__cfTracker = { flush: safe(sendAll) };
     track('page_view');
 
     // Capture phase: page code that stops propagation can't hide clicks from us.
     document.addEventListener('click', safe(onClick), true);
+    // Scrolling anywhere (a page or a panel) means a click did something.
+    document.addEventListener('scroll', safe(changed), { capture: true, passive: true });
     document.addEventListener('visibilitychange', safe(function () {
-      if (document.visibilityState === 'hidden') flush();
+      if (document.visibilityState === 'hidden') sendAll();
     }));
-    window.addEventListener('pagehide', safe(flush));
+    window.addEventListener('pagehide', safe(sendAll));
     // A page restored from the back/forward cache doesn't rerun scripts: count the visit.
     window.addEventListener('pageshow', safe(function (e) {
       if (e.persisted) track('page_view');

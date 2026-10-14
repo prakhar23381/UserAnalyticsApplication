@@ -66,7 +66,13 @@ async function openPage({ url = PAGE, endpoint, prepare } = {}) {
     errors,
     flush: () => win.__cfTracker.flush(),
     pendingTimers: () => timers.filter((t) => !t.cleared),
-    runTimers: () => timers.splice(0).forEach((t) => !t.cleared && t.fn()),
+    // Fires the pending timers, or only those set for `ms` (1000: dead-click verdicts).
+    runTimers(ms) {
+      for (const t of timers.filter((t) => !t.cleared && (ms === undefined || t.ms === ms))) {
+        t.cleared = true;
+        t.fn();
+      }
+    },
     async sent() {
       const bodies = await Promise.all(beacons.map((b) => b.blob.text()));
       return bodies.flatMap((body) => JSON.parse(body).events);
@@ -140,7 +146,9 @@ describe('tracker.js', () => {
       page.click('#email');
       page.flush();
 
-      const [, link, paragraph, input] = await page.sent();
+      // A click on a form field isn't held for the dead-click check, so it is queued first.
+      const byTag = Object.fromEntries((await page.sent()).map((e) => [e.target?.tag, e]));
+      const { a: link, p: paragraph, input } = byTag;
       expect(link.target).toEqual({ tag: 'a', text: 'About us' });
       expect(paragraph.target).toEqual({ tag: 'p', id: 'copy' });
       expect(input.target).toEqual({ tag: 'input', id: 'email' });
@@ -161,10 +169,13 @@ describe('tracker.js', () => {
       });
       page.click('#add span', { x: 10, y: 20 });
       page.click('#email', { detail: 0 });
+      page.click('#copy', { x: 5, y: 5 });
+      page.runTimers(1000); // #add span and #copy are judged dead
       page.flush();
 
-      const results = (await page.sent()).map(validateEvent);
-      expect(results.map((r) => r.error)).toEqual([undefined, undefined, undefined]);
+      const events = await page.sent();
+      expect(events.filter((e) => e.dead)).toHaveLength(2);
+      expect(events.map((e) => validateEvent(e).error)).toEqual([undefined, undefined, undefined, undefined]);
     });
 
     it('counts a page restored from the back/forward cache as a new page view', async () => {
@@ -176,6 +187,63 @@ describe('tracker.js', () => {
       }
       page.flush();
       expect((await page.sent()).map((e) => e.type)).toEqual(['page_view', 'page_view']);
+    });
+  });
+
+  describe('dead clicks', () => {
+    const tick = () => new Promise((resolve) => setTimeout(resolve, 0)); // lets a MutationObserver report
+    const sentClicks = async (page) => (await page.sent()).filter((e) => e.type === 'click');
+
+    it('holds a click for 1 s, then flags it dead when nothing changed', async () => {
+      const page = await openPage();
+      page.click('#copy', { x: 5, y: 5 });
+      expect(page.pendingTimers().map((t) => t.ms)).toEqual([5000, 1000]);
+      page.runTimers(1000);
+      page.flush();
+      expect(await sentClicks(page)).toEqual([expect.objectContaining({ target: { tag: 'p', id: 'copy' }, dead: true })]);
+    });
+
+    it('does not flag a click that changes the page', async () => {
+      const page = await openPage();
+      const button = page.win.document.querySelector('#add');
+      button.addEventListener('click', () => (button.textContent = 'Added ✓'));
+      page.click('#add');
+      await tick();
+      page.runTimers(1000);
+      page.flush();
+      expect((await sentClicks(page))[0]).not.toHaveProperty('dead');
+    });
+
+    it('does not flag a click followed by a scroll or a URL change', async () => {
+      const page = await openPage();
+      page.click('#copy');
+      page.win.document.dispatchEvent(new page.win.Event('scroll'));
+      page.click('a'); // href="#about": the URL changes
+      page.runTimers(1000);
+      page.flush();
+      expect((await sentClicks(page)).map((e) => e.dead ?? false)).toEqual([false, false]);
+    });
+
+    it('sends held clicks at once, unflagged, when the page is left', async () => {
+      const page = await openPage();
+      page.click('#copy');
+      page.win.dispatchEvent(new page.win.Event('pagehide'));
+      expect(await sentClicks(page)).toEqual([expect.not.objectContaining({ dead: true })]);
+      page.runTimers(1000); // the verdict comes too late and sends nothing twice
+      page.flush();
+      expect(page.beacons).toHaveLength(1);
+    });
+
+    it('never holds clicks that only focus or open a new tab', async () => {
+      const page = await openPage();
+      page.win.document.body.insertAdjacentHTML('beforeend', '<div id="note" contenteditable="true">Note</div>');
+      page.click('#email');
+      page.click('#note');
+      const event = new page.win.MouseEvent('click', { bubbles: true, cancelable: true, detail: 1, metaKey: true });
+      page.win.document.querySelector('#copy').dispatchEvent(event);
+      expect(page.pendingTimers().map((t) => t.ms)).toEqual([5000]);
+      page.flush();
+      expect((await sentClicks(page)).some((e) => e.dead)).toBe(false);
     });
   });
 
@@ -191,6 +259,8 @@ describe('tracker.js', () => {
     it('sends at once when 10 events are queued', async () => {
       const page = await openPage();
       for (let i = 0; i < 9; i++) page.click('#add');
+      expect(page.beacons).toHaveLength(0); // clicks wait 1 s for the dead-click check
+      page.runTimers(1000);
       expect(page.beacons).toHaveLength(1);
       expect(await page.sent()).toHaveLength(10);
       expect(page.pendingTimers()).toHaveLength(0);

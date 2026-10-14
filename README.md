@@ -313,6 +313,7 @@ from somewhere else, give it the API's endpoint:
 | `doc_w`, `doc_h` | all | Document `scrollWidth` and `scrollHeight` |
 | `x`, `y` | click | `pageX` and `pageY`: document coordinates in CSS px, rounded. A keyboard or scripted click has no pointer position, so it is placed at the element's centre. |
 | `target` | click | The nearest link, button or form field (else the clicked element): `tag`, `id`, `classes`, and `text` for links, buttons and labels only, cut to 80 characters |
+| `dead` | click | `true` when nothing on the page changed within 1 s of the click (see Behaviour); absent otherwise |
 
 **Privacy.** Form field values are never read. Element text is collected only
 for links, buttons and labels. No cookies are set, and the API doesn't store
@@ -325,6 +326,14 @@ end up in a URL, and so never in a tracked `page_url`.
 - It does nothing inside an iframe or when the URL has `?cf_preview=1`. This
   keeps the dashboard's heatmap preview from recording visits.
 - A page restored from the back/forward cache counts as a new `page_view`.
+- **Dead clicks.** Each click is held for 1 s while a `MutationObserver`, a
+  scroll listener and the URL show whether the page reacted. If nothing
+  changed, the click is sent with `dead: true`. The observer runs only while a
+  click is held. Leaving or hiding the page sends held clicks at once without
+  the flag, since navigating is a reaction. Clicks on form fields, labels and
+  editable text (they only focus) and ctrl/⌘/shift clicks (a new tab) are
+  never flagged. A page that changes on its own (a carousel, a clock) hides
+  dead clicks: the tracker can't tell which change the click caused.
 - Loading the script twice is harmless.
 
 ## Seed script

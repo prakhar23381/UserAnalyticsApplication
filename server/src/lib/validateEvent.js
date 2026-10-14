@@ -9,6 +9,8 @@ const MAX_URL_LENGTH = 2048;
 const MAX_PX = 100_000;
 const MAX_FUTURE_MS = 24 * 60 * 60 * 1000;
 const TARGET_LIMITS = { tag: 32, id: 128, classes: 256, text: 80 };
+const MAX_SELECTOR = 256; // a cut-off selector would name the wrong element, so a longer one is dropped
+const BOX_FIELDS = ['x', 'y', 'w', 'h'];
 const SIZE_FIELDS = ['viewport_w', 'viewport_h', 'doc_w', 'doc_h'];
 
 const fail = (error) => ({ ok: false, error });
@@ -24,6 +26,12 @@ function cleanTarget(target) {
   for (const [key, max] of Object.entries(TARGET_LIMITS)) {
     const value = target[key];
     if (typeof value === 'string' && value.trim()) clean[key] = value.trim().slice(0, max);
+  }
+  const selector = typeof target.selector === 'string' ? target.selector.trim() : '';
+  if (selector && selector.length <= MAX_SELECTOR) clean.selector = selector;
+  // The element's box in page px; left out unless every side is a sane number.
+  if (isObject(target.box) && BOX_FIELDS.every((key) => isPx(target.box[key]))) {
+    clean.box = Object.fromEntries(BOX_FIELDS.map((key) => [key, Math.round(target.box[key])]));
   }
   return Object.keys(clean).length > 0 ? clean : undefined;
 }

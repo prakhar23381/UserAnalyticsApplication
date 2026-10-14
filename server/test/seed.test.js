@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { Window } from 'happy-dom';
 import { describe, expect, it } from 'vitest';
 import {
   ELEMENTS,
@@ -95,6 +98,13 @@ describe('generateSessions', () => {
       const inside = click.x >= left && click.x <= left + width && click.y >= top && click.y <= top + height;
       expect(inside, `${name} on ${device} at (${click.x}, ${click.y})`).toBe(true);
       expect(click.y).toBeLessThanOrEqual(click.doc_h);
+    }
+  });
+
+  it('gives each click its element box from LAYOUT', () => {
+    for (const click of clicks) {
+      const [x, y, w, h] = LAYOUT[deviceFor(click.viewport_w)].box[elementOf(click)];
+      expect(click.target.box).toEqual({ x, y, w, h });
     }
   });
 
@@ -218,5 +228,51 @@ describe('isLocalUri', () => {
     'not a uri',
   ])('rejects %s', (uri) => {
     expect(isLocalUri(uri)).toBe(false);
+  });
+});
+
+describe('ELEMENTS selectors', () => {
+  const ORIGIN = 'http://localhost:4000';
+  const PUBLIC_DIR = fileURLToPath(new URL('../public/', import.meta.url));
+  const HEADER = ['logo', 'nav-home', 'nav-products', 'nav-about', 'cart'];
+  // The pages each element is clicked on in the seed.
+  const pagesOf = (name) => {
+    if (HEADER.includes(name)) return ['home', 'products', 'about'];
+    if (/^(img|add)-/.test(name)) return ['products'];
+    if (/^(cta-visit-shop|newsletter-)/.test(name)) return ['about'];
+    return ['home'];
+  };
+
+  it.each(['home', 'products', 'about'])('match what tracker.js records on the %s page', async (page) => {
+    const win = new Window({
+      url: ORIGIN + PAGES[page],
+      settings: {
+        enableJavaScriptEvaluation: true,
+        suppressInsecureJavaScriptEnvironmentWarning: true,
+        fetch: { virtualServers: [{ url: `${ORIGIN}/`, directory: PUBLIC_DIR }] },
+      },
+    });
+    const sent = [];
+    win.navigator.sendBeacon = (to, blob) => sent.push(blob) > 0;
+    // happy-dom waits for timers; the tracker's batch and dead-click timers aren't needed here.
+    win.setTimeout = () => 0;
+    win.clearTimeout = () => {};
+    win.document.write(readFileSync(`${PUBLIC_DIR}${page === 'home' ? 'demo/index.html' : PAGES[page].slice(1)}`, 'utf8'));
+    await win.happyDOM.waitUntilComplete();
+
+    const names = Object.keys(ELEMENTS).filter((name) => pagesOf(name).includes(page));
+    for (const name of names) {
+      const element = win.document.querySelector(ELEMENTS[name].target.selector);
+      expect(element, name).not.toBeNull();
+      element.addEventListener('click', (e) => e.preventDefault()); // stay on the page
+      element.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
+    }
+    win.__cfTracker.flush();
+    const recorded = (await Promise.all(sent.map((blob) => blob.text())))
+      .flatMap((body) => JSON.parse(body).events)
+      .filter((event) => event.type === 'click');
+    // Sorted: clicks on form fields skip the dead-click hold, so they are queued first.
+    expect(recorded.map((click) => click.target.selector).sort()).toEqual(names.map((name) => ELEMENTS[name].target.selector).sort());
+    await win.happyDOM.close();
   });
 });

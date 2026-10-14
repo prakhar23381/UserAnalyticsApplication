@@ -50,6 +50,15 @@ describe('validateEvent', () => {
     });
   });
 
+  it('keeps a selector and a box, dropping a selector over 256 characters and a box with a bad side', () => {
+    const box = { x: 10.4, y: 20, w: 300, h: 54 };
+    const target = (extra) => validateEvent({ ...click, target: { tag: 'div', ...extra } }).value.target;
+    expect(target({ selector: ' #shop > div ', box })).toEqual({ tag: 'div', selector: '#shop > div', box: { x: 10, y: 20, w: 300, h: 54 } });
+    expect(target({ selector: 'a'.repeat(257) })).toEqual({ tag: 'div' });
+    expect(target({ box: { ...box, w: -1 } })).toEqual({ tag: 'div' });
+    expect(target({ box: [1, 2, 3, 4] })).toEqual({ tag: 'div' });
+  });
+
   it('keeps dead: true on a click only, and rejects a dead flag that is not a boolean', () => {
     expect(validateEvent({ ...click, dead: true }).value.dead).toBe(true);
     expect(validateEvent({ ...click, dead: false }).value).not.toHaveProperty('dead');

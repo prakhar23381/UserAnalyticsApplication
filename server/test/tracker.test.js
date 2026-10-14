@@ -131,6 +131,33 @@ describe('tracker.js', () => {
       });
     });
 
+    it('names the element with a short selector from the nearest id, and its box in page px', async () => {
+      const page = await openPage();
+      page.win.document.body.insertAdjacentHTML(
+        'beforeend',
+        `<main id="shop"><section class="grid products wide">
+           <article class="card"><div class="photo tone-1">A</div></article>
+           <article class="card"><div class="photo tone-2">B</div></article>
+         </section></main>
+         <div><div><div><div><div><div><span class="deep">x</span></div></div></div></div></div></div>`,
+      );
+      const photo = page.win.document.querySelector('.tone-2');
+      photo.getBoundingClientRect = () => ({ left: 40.4, top: 100.6, width: 200, height: 160 });
+      Object.defineProperty(page.win, 'scrollY', { value: 300, configurable: true });
+      page.click('.tone-2');
+      page.click('.deep');
+      page.flush();
+
+      const [, onPhoto, deep] = await page.sent();
+      expect(onPhoto.target).toMatchObject({
+        selector: '#shop > section.grid.products > article.card:nth-of-type(2) > div.photo.tone-2',
+        box: { x: 40, y: 401, w: 200, h: 160 },
+      });
+      expect(page.win.document.querySelector(onPhoto.target.selector)).toBe(photo);
+      // No id within 5 levels: the path stops there.
+      expect(deep.target.selector).toBe('div > div > div > div > span.deep');
+    });
+
     it('still sees clicks the page stops from propagating', async () => {
       const page = await openPage();
       page.win.document.querySelector('#add').addEventListener('click', (e) => e.stopPropagation());
@@ -149,9 +176,10 @@ describe('tracker.js', () => {
       // A click on a form field isn't held for the dead-click check, so it is queued first.
       const byTag = Object.fromEntries((await page.sent()).map((e) => [e.target?.tag, e]));
       const { a: link, p: paragraph, input } = byTag;
-      expect(link.target).toEqual({ tag: 'a', text: 'About us' });
-      expect(paragraph.target).toEqual({ tag: 'p', id: 'copy' });
-      expect(input.target).toEqual({ tag: 'input', id: 'email' });
+      const box = { x: 0, y: 0, w: 0, h: 0 }; // happy-dom has no layout
+      expect(link.target).toEqual({ tag: 'a', text: 'About us', selector: 'a', box });
+      expect(paragraph.target).toEqual({ tag: 'p', id: 'copy', selector: '#copy', box });
+      expect(input.target).toEqual({ tag: 'input', id: 'email', selector: '#email', box });
       expect(await page.beacons[0].blob.text()).not.toContain('jane@example.com');
     });
 
@@ -200,7 +228,7 @@ describe('tracker.js', () => {
       expect(page.pendingTimers().map((t) => t.ms)).toEqual([5000, 1000]);
       page.runTimers(1000);
       page.flush();
-      expect(await sentClicks(page)).toEqual([expect.objectContaining({ target: { tag: 'p', id: 'copy' }, dead: true })]);
+      expect(await sentClicks(page)).toEqual([expect.objectContaining({ target: expect.objectContaining({ tag: 'p', id: 'copy' }), dead: true })]);
     });
 
     it('does not flag a click that changes the page', async () => {

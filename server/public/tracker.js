@@ -15,6 +15,8 @@
  * the viewport and document sizes. Clicks add document coordinates
  * (pageX/pageY) and the clicked element's tag, id and classes, plus its text
  * for links, buttons and labels only. Form field values are never read.
+ * A click also names its element with a short CSS selector (tags, ids, up to
+ * two classes and :nth-of-type, from the nearest id) and its box in page px.
  *
  * Dead clicks: a click is held for 1 second. If nothing on the page changed
  * (DOM, scroll position or URL) in that time, it is sent with `dead: true`. A
@@ -36,6 +38,8 @@
   var TEXT_MAX = 80;
   var INTERACTIVE = 'a, button, input, select, textarea, label, [role="button"]';
   var TEXT_TAGS = { A: true, BUTTON: true, LABEL: true };
+  var SELECTOR_DEPTH = 5; // elements, counting the clicked one
+  var SELECTOR_MAX = 256; // what the API accepts; a longer selector is left out
   var DEAD_AFTER_MS = 1000; // a click that changed nothing for this long is dead
   var FOCUS_ONLY = 'input, select, textarea, label';
 
@@ -197,6 +201,45 @@
     return !el.closest(FOCUS_ONLY) && !el.isContentEditable;
   }
 
+  function escapeCss(value) {
+    if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(value);
+    return value.replace(/[^A-Za-z0-9_-]/g, '\\$&');
+  }
+
+  // One step of a selector: #id, or tag.class.class plus :nth-of-type among same-tag siblings.
+  function selectorStep(el) {
+    if (el.id) return '#' + escapeCss(el.id);
+    var step = el.tagName.toLowerCase();
+    var classes = (el.getAttribute('class') || '').trim().split(/\s+/);
+    for (var i = 0; i < classes.length && i < 2; i++) {
+      if (classes[i]) step += '.' + escapeCss(classes[i]);
+    }
+    var parent = el.parentElement;
+    if (parent) {
+      var index = 0;
+      var same = 0;
+      for (var child = parent.firstElementChild; child; child = child.nextElementSibling) {
+        if (child.tagName !== el.tagName) continue;
+        same++;
+        if (child === el) index = same;
+      }
+      if (same > 1) step += ':nth-of-type(' + index + ')';
+    }
+    return step;
+  }
+
+  // A short path to the element, from the nearest id (or SELECTOR_DEPTH steps up).
+  function selectorOf(el) {
+    var steps = [];
+    for (var node = el; node && node.nodeType === 1 && steps.length < SELECTOR_DEPTH; node = node.parentElement) {
+      if (node === document.body || node === document.documentElement) break;
+      steps.unshift(selectorStep(node));
+      if (node.id) break;
+    }
+    var selector = steps.join(' > ');
+    return selector && selector.length <= SELECTOR_MAX ? selector : undefined;
+  }
+
   // Names the element worth naming: the nearest link, button or field, else what was clicked.
   function describe(el) {
     el = el.closest(INTERACTIVE) || el;
@@ -208,6 +251,15 @@
       var text = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, TEXT_MAX);
       if (text) target.text = text;
     }
+    var selector = selectorOf(el);
+    if (selector) target.selector = selector;
+    var box = el.getBoundingClientRect();
+    target.box = {
+      x: Math.round(box.left + window.scrollX),
+      y: Math.round(box.top + window.scrollY),
+      w: Math.round(box.width),
+      h: Math.round(box.height),
+    };
     return { el: el, target: target };
   }
 

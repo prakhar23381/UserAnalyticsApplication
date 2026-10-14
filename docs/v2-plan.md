@@ -206,3 +206,20 @@ Three commits on `v2`: **M3a** server and seed, **M3b** tracker (dead clicks),
 `rage_sessions`, `dead_sessions`, `quick_back_sessions`; the three counts on
 session rows; `rage: true` / `quick_back: true` on journey events; an
 `insights` facet in `GET /api/filters`.
+
+## M4 in detail (approved 2026-10-15)
+
+Three commits on `v2`: **M4a** element identity (tracker, server, seed), **M4b** Heat
+view, ranked-elements sidebar and badges, element heatmap, **M4c** area tool and CSV
+export. Display stays **Dots / Grid / Heat**: the spec names dots and grid, so both
+stay as they are and Heat is added as a third view.
+
+| # | Decision | Choice |
+|---|---|---|
+| M4-D1 | Ranking | **`GET /api/elements`**, following the current segment and device: exact over all clicks, with session counts. Shown in a collapsible sidebar, "Ranked by most clicks · N elements", one card per element (rank, name, clicks and share, copy selector) |
+| M4-D2 | Element identity | The tracker sends `target.selector` (short CSS path: stops at the nearest `id` or after 5 levels; tags, ids, ≤ 2 classes, `:nth-of-type`; no text or attributes) and `target.box` (`{ x, y, w, h }` in page px). Older clicks are keyed by tag, id, classes and text |
+| M4-D3 | Badges | Numbered badges on the **top 10** elements, on all three views; ① in the sidebar is ① on the page. Placed at the recorded box mapped to the reference width, else at the middle of the element's clicks |
+| M4-D4 | Heat colours | Classic **blue → green → yellow → red** on a `<canvas>`; legend with words ("Hot ↔ Cold"); exact numbers in the sidebar |
+| M4-D5 | "Sessions that clicked it" | **Deferred** (needs an event-based session filter); fits M6 |
+
+Footer: page views and clicks for the page in the segment, plus the legend.

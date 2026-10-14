@@ -42,35 +42,44 @@ const PRODUCTS = [
   ['mug', 2],
 ];
 
-// What tracker.js records as the `target` of a click on each element, and the
-// page a link opens. The cart link's text also includes the cart count.
+// What tracker.js records as the `target` of a click on each element (its box
+// comes from LAYOUT), and the page a link opens. The cart link's text also
+// includes the cart count. test/seed.test.js checks each selector against the
+// demo pages with the real tracker.
+const NAV = 'header.site-header > div.container.nav';
 export const ELEMENTS = {
-  logo: { target: { tag: 'a', classes: 'logo', text: 'Acme Roasters' }, opens: 'home' },
-  'nav-home': { target: { tag: 'a', text: 'Home' }, opens: 'home' },
-  'nav-products': { target: { tag: 'a', text: 'Products' }, opens: 'products' },
-  'nav-about': { target: { tag: 'a', text: 'About' }, opens: 'about' },
-  cart: { target: { tag: 'a', id: 'cart-link', classes: 'cart' }, opens: 'products' },
+  logo: { target: { tag: 'a', classes: 'logo', text: 'Acme Roasters', selector: `${NAV} > a.logo:nth-of-type(1)` }, opens: 'home' },
+  'nav-home': { target: { tag: 'a', text: 'Home', selector: `${NAV} > nav > a:nth-of-type(1)` }, opens: 'home' },
+  'nav-products': { target: { tag: 'a', text: 'Products', selector: `${NAV} > nav > a:nth-of-type(2)` }, opens: 'products' },
+  'nav-about': { target: { tag: 'a', text: 'About', selector: `${NAV} > nav > a:nth-of-type(3)` }, opens: 'about' },
+  cart: { target: { tag: 'a', id: 'cart-link', classes: 'cart', selector: '#cart-link' }, opens: 'products' },
   'cta-shop': {
-    target: { tag: 'a', id: 'cta-shop', classes: 'btn btn-primary', text: 'Shop now' },
+    target: { tag: 'a', id: 'cta-shop', classes: 'btn btn-primary', text: 'Shop now', selector: '#cta-shop' },
     opens: 'products',
   },
   'cta-learn': {
-    target: { tag: 'a', id: 'cta-learn', classes: 'btn btn-secondary', text: 'Learn more' },
+    target: { tag: 'a', id: 'cta-learn', classes: 'btn btn-secondary', text: 'Learn more', selector: '#cta-learn' },
     opens: 'about',
   },
   'cta-visit-shop': {
-    target: { tag: 'a', id: 'cta-visit-shop', classes: 'btn btn-primary', text: 'Visit the shop' },
+    target: { tag: 'a', id: 'cta-visit-shop', classes: 'btn btn-primary', text: 'Visit the shop', selector: '#cta-visit-shop' },
     opens: 'products',
   },
-  'newsletter-email': { target: { tag: 'input', id: 'newsletter-email' } },
+  'newsletter-email': { target: { tag: 'input', id: 'newsletter-email', selector: '#newsletter-email' } },
   'newsletter-submit': {
-    target: { tag: 'button', id: 'newsletter-submit', classes: 'btn btn-primary', text: 'Subscribe' },
+    target: { tag: 'button', id: 'newsletter-submit', classes: 'btn btn-primary', text: 'Subscribe', selector: '#newsletter-submit' },
   },
 };
 PRODUCTS.forEach(([name], i) => {
-  ELEMENTS[`img-${name}`] = { target: { tag: 'div', classes: `product-image tone-${i + 1}` } };
+  ELEMENTS[`img-${name}`] = {
+    target: {
+      tag: 'div',
+      classes: `product-image tone-${i + 1}`,
+      selector: `main > section.container.products > article.product:nth-of-type(${i + 1}) > div.product-image.tone-${i + 1}`,
+    },
+  };
   ELEMENTS[`add-${name}`] = {
-    target: { tag: 'button', id: `add-${name}`, classes: 'btn btn-primary add-to-cart', text: 'Add to cart' },
+    target: { tag: 'button', id: `add-${name}`, classes: 'btn btn-primary add-to-cart', text: 'Add to cart', selector: `#add-${name}` },
   };
 });
 
@@ -316,14 +325,18 @@ function generateSession(random, { baseUrl, now }) {
     let next = null;
     clicks.forEach((name, i) => {
       const element = ELEMENTS[name];
-      const [, top] = box[name];
+      const [left, top, width, height] = box[name];
       // Read for a while, scroll down to the element, then click; later clicks come quicker.
       time +=
         i === 0
           ? between(random, 3, 15) * SECOND + (top / viewport_h) * between(random, 1, 3) * SECOND
           : between(random, 2, 10) * SECOND;
       time = Math.round(time);
-      const target = name === 'cart' ? { ...element.target, text: `Cart ${cart}` } : element.target;
+      const target = {
+        ...element.target,
+        ...(name === 'cart' && { text: `Cart ${cart}` }),
+        box: { x: left, y: top, w: width, h: height },
+      };
       // A product photo does nothing when clicked: the tracker flags the click as dead.
       const photo = name.startsWith('img-');
       const click = { ...common, type: 'click', ...pointIn(random, box[name]), target, ...(photo && { dead: true }) };

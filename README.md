@@ -315,11 +315,12 @@ from somewhere else, give it the API's endpoint:
 | `viewport_w`, `viewport_h` | all | Window size in CSS px |
 | `doc_w`, `doc_h` | all | Document `scrollWidth` and `scrollHeight` |
 | `x`, `y` | click | `pageX` and `pageY`: document coordinates in CSS px, rounded. A keyboard or scripted click has no pointer position, so it is placed at the element's centre. |
-| `target` | click | The nearest link, button or form field (else the clicked element): `tag`, `id`, `classes`, and `text` for links, buttons and labels only, cut to 80 characters |
+| `target` | click | The nearest link, button or form field (else the clicked element): `tag`, `id`, `classes`, and `text` for links, buttons and labels only, cut to 80 characters. Also `selector`, a short CSS path to the element (from the nearest `id`, at most 5 steps of tag, id, two classes and `:nth-of-type`), and `box`, its `{ x, y, w, h }` in page px |
 | `dead` | click | `true` when nothing on the page changed within 1 s of the click (see Behaviour); absent otherwise |
 
 **Privacy.** Form field values are never read. Element text is collected only
-for links, buttons and labels. No cookies are set, and the API doesn't store
+for links, buttons and labels. Selectors are built from tag names, ids and
+classes only, never from text or other attributes. No cookies are set, and the API doesn't store
 IP addresses. The demo's newsletter form uses POST, so a typed email can never
 end up in a URL, and so never in a tracked `page_url`.
 
@@ -422,6 +423,7 @@ the same as in the database.
 | `GET` | `/api/sessions/:id/events` | One session's events, in order |
 | `GET` | `/api/pages` | Every tracked page, for the heatmap's page picker |
 | `GET` | `/api/heatmap` | Click positions on one page |
+| `GET` | `/api/elements` | One page's elements ranked by clicks |
 | `GET` | `/api/overview` | Headline numbers, sessions per day, top pages, and the split by device, browser, country and source for a segment |
 | `GET` | `/api/filters` | The values the filter menus offer, with session counts |
 
@@ -588,7 +590,9 @@ filters.
 | Segment filters | | See above. Only the matching sessions' clicks count |
 
 Returns the newest 5000 clicks at most. `total_clicks` is the uncapped count.
-Each click carries only the fields the heatmap needs.
+Each click carries only the fields the heatmap needs, plus `key`, the element
+it was on (see `GET /api/elements`), and `box`, that element's box, when the
+tracker recorded one.
 
 ```json
 {
@@ -596,8 +600,39 @@ Each click carries only the fields the heatmap needs.
   "device": "desktop",
   "total_clicks": 40,
   "clicks": [
-    { "x": 552, "y": 31, "viewport_w": 1512, "viewport_h": 900, "doc_w": 1512, "doc_h": 1144, "device": "desktop" },
-    { "x": 1173, "y": 929, "viewport_w": 1512, "viewport_h": 900, "doc_w": 1512, "doc_h": 1144, "device": "desktop" }
+    {
+      "x": 228, "y": 924, "viewport_w": 1280, "viewport_h": 800, "doc_w": 1280, "doc_h": 1144, "device": "desktop",
+      "key": "#add-espresso", "box": { "x": 117, "y": 900, "w": 221, "h": 54 }
+    },
+    { "x": 1173, "y": 929, "viewport_w": 1512, "viewport_h": 900, "doc_w": 1512, "doc_h": 1144, "device": "desktop", "key": "a \"About\"" }
+  ]
+}
+```
+
+### `GET /api/elements`
+
+Takes the same parameters as `GET /api/heatmap`. The page's elements ranked by
+clicks (the top 50), with each one's share of the page's clicks and how many
+sessions clicked it, for the heatmap's sidebar.
+
+An element's `key` is the tracker's `selector`. Clicks recorded before the
+tracker sent selectors use `#id` when the element has an id (the same as its
+selector), else its tag, classes and text, so until those clicks age out, an
+element without an id can appear twice. The names (`tag`, `id`, `classes`,
+`text`) come from the newest click. The ranking uses `$top`, which needs
+MongoDB 5.2 or later.
+
+```json
+{
+  "page_url": "http://localhost:4000/demo/products.html",
+  "device": "desktop",
+  "total_clicks": 61,
+  "total_elements": 14,
+  "elements": [
+    {
+      "rank": 1, "key": "#add-espresso", "selector": "#add-espresso", "tag": "button", "id": "add-espresso",
+      "classes": "btn btn-primary add-to-cart", "text": "Add to cart", "clicks": 9, "share": 0.1475, "sessions": 7
+    }
   ]
 }
 ```
@@ -686,7 +721,7 @@ collection summarizes them, one document per session, for the filters.
 | `raw_url` | string | Exactly what the browser had, including UTM tags |
 | `timestamp` | Date | Client clock |
 | `received_at` | Date | Server clock |
-| `x`, `y`, `target` | number, number, object | Clicks only |
+| `x`, `y`, `target` | number, number, object | Clicks only. `target` holds `tag`, `id`, `classes`, `text`, `selector` and `box` (`{ x, y, w, h }`) |
 | `dead` | boolean | Clicks only: `true` when the tracker saw nothing change within 1 s; absent otherwise |
 | `viewport_w`, `viewport_h`, `doc_w`, `doc_h` | number | CSS px |
 | `device` | `mobile` \| `tablet` \| `desktop` | Derived on the server from `viewport_w`: under 768 is mobile, under 1024 is tablet. Never taken from the client. |
@@ -697,7 +732,7 @@ collection summarizes them, one document per session, for the filters.
 | Index | Used by |
 |---|---|
 | `{ session_id: 1, timestamp: 1 }` | Rebuilding a session's summary, a session's journey, the events of a segment's sessions (top pages), and the seed script's `--reset` (an anchored `^seed_` prefix match) |
-| `{ page_url: 1, type: 1, device: 1 }` | The heatmap query and its count, and the pages list |
+| `{ page_url: 1, type: 1, device: 1 }` | The heatmap query and its count, the element ranking, and the pages list |
 | `{ timestamp: -1 }` | No current endpoint. It is there for time-range queries, such as recent activity or a retention job |
 
 `sessions` ([`server/src/models/Session.js`](server/src/models/Session.js))

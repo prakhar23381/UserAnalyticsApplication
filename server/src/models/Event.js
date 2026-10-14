@@ -3,9 +3,11 @@ import mongoose from 'mongoose';
 export const EVENT_TYPES = ['page_view', 'click'];
 export const DEVICES = ['mobile', 'tablet', 'desktop'];
 
-// What was clicked, so the journey can say `button#buy "Add to cart"`.
+// What was clicked, so the journey can say `button#buy "Add to cart"`, and where
+// it was: a short CSS selector and its box in page px (heatmap element ranking).
+const boxSchema = new mongoose.Schema({ x: Number, y: Number, w: Number, h: Number }, { _id: false, id: false });
 const targetSchema = new mongoose.Schema(
-  { tag: String, id: String, classes: String, text: String },
+  { tag: String, id: String, classes: String, text: String, selector: String, box: boxSchema },
   { _id: false, id: false },
 );
 

@@ -2,6 +2,19 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-14 — Demo: products heading aligned
+- Closes TODO §5. `.page-title { padding: 40px 0 8px }` came after
+  `.container { padding: 0 20px }` and zeroed its side padding. On
+  `products.html` both classes are on one element (on `about.html`,
+  `.page-title` sits inside the container, so it was fine). Now
+  `padding-top` and `padding-bottom` only, like `.nav` and `.products`.
+- Re-measured with `scratch/measure-layout.mjs`: only the products `h1`
+  moved (x 80→100 at 1280, 0→20 at 768 and 375). Page heights and every
+  link and button box are unchanged, so the seed's `LAYOUT` (which has no
+  heading box), the seeded data and `seed.test.js` stand.
+- `docs/images/heatmap.png` retaken with the aligned heading. `npm test`:
+  145 passed.
+
 ## 2026-10-14 — Phase 8: README
 - `README.md` for hiring reviewers: summary, screenshots, how it works (ASCII
   diagram, event flow, how the heatmap places clicks), tech stack, local

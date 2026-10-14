@@ -175,8 +175,11 @@ a {
 
 /* ---- products ---- */
 
+/* top and bottom only: on products.html this element is also the .container,
+   whose side padding must stay */
 .page-title {
-  padding: 40px 0 8px;
+  padding-top: 40px;
+  padding-bottom: 8px;
 }
 
 .page-title h1 {

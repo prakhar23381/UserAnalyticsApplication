@@ -108,9 +108,7 @@ decision; list them in the README as next steps.
 
 ## 5. Phase 3 — Demo pages (`server/public/demo/`)
 
-Done, including the seed script (see `STATUS_LOG.md`).
-
-- [ ] **[S]** `products.html`: the "Our coffee" heading sits outside the container's 20 px padding (80 px from the edge at 1280, 0 px at 768 and 375; the header and cards are padded). Found in the Phase 4 heatmap preview. The fix can change text wrapping on mobile, so re-measure the seed's `LAYOUT` afterwards (`scratch/measure-layout.mjs`) and re-run `seed.test.js`.
+Done, including the seed script and the products heading fix (see `STATUS_LOG.md`).
 
 ---
 

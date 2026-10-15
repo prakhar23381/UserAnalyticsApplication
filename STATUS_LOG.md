@@ -2,6 +2,25 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-15 — Trailmark v2 released to production (`main` = `133815f`)
+- User chose to ship v2 (M1–M5) now; M6 stays planned work (README "What I'd do next").
+- Checks before release: Atlas cluster runs MongoDB 8.0.34 (`$top` supported; read-only
+  `buildInfo` via the git-ignored `atlas-credentials.env`, URI never printed); production
+  database `causalfunnel` had 292 events, 50 seeded + 3 real sessions, no `sessions` collection.
+- Local re-seed (double-confirmed): 40 sessions, 267 events with exits, selectors and boxes.
+  README screenshots retaken at 1280 px, 2× (overview with 4 insight cards, sessions with
+  chips, journey with rage/dead markers and visit engagement, Heat with ranked elements); the
+  Next.js dev indicator removed before capture. README intro and next steps updated.
+- `main` fast-forwarded to `v2` and pushed over SSH (double-confirmed, production release).
+  Render served v2 about a minute later; startup built `sessions` on Atlas (53). Vercel
+  production deployment Ready in 42 s.
+- Production re-seed (double-confirmed): `--reset` deleted the 202 old seeded events; 50
+  sessions / 387 events inserted, pages on the Render demo; the 3 real sessions kept.
+- Live smoke test: every endpoint 200 (incl. `/api/elements`, `/api/engagement`), CORS refuses
+  other origins, `/tracker.js` sends `page_exit`; a real Brave visit to the live demo stored its
+  events and exit (text/plain, 202, no console errors); the live dashboard's Overview, Heat and
+  Scroll views load without errors. Totals: 53 sessions, insights 2 / 9 / 8 / 4.
+
 ## 2026-10-15 — v2 M5: engagement — page exits, scroll and attention maps, excessive scrolling (branch `v2`)
 Plan and decisions M5-D1–D6 in `docs/v2-plan.md` ("M5 in detail"). Three local commits.
 - **M5a (`0fc9cfd`):** tracker `pv_id` on every event; on hide or leave, a **`page_exit`** with

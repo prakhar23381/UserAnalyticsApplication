@@ -28,11 +28,10 @@ Priority tags: **[M]** must (spec requirement) · **[S]** should · **[X]** stre
 
 ---
 
-## 3. Phase 9 — Trailmark v2 (planned)
+## 3. Phase 9 — Trailmark v2 (M1–M5 live since 2026-10-15; M6 planned)
 
 Plan and decisions: `docs/v2-plan.md` (approved direction 2026-10-15). Work on the
 `v2` branch; `main` stays the submitted version. **Each milestone needs its own
 detailed plan and approval before code changes.**
 
-- [ ] **[S]** (needs the user's double confirmation) Re-seed the local DB (`npm run seed -- --reset`) so the dashboard shows the M3 insight scenarios; then retake the README screenshots
 - [ ] **[S] M6** Custom tags (`window.trailmark.tag`), session labels, comparing two segments, privacy opt-outs (`data-cf-ignore`, `data-strip-query`), single-page-app page views

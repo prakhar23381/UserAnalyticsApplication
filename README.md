@@ -2,10 +2,13 @@
 
 Trailmark is a small full-stack analytics app, built as the take-home for
 CausalFunnel's Full Stack Engineer role. A dependency-free script (`tracker.js`) records
-`page_view` and `click` events on any web page and sends them to a Node/Express
-API, which validates them and stores them in MongoDB. A Next.js dashboard lists
-the sessions, replays each one as an ordered user journey, and draws a
-per-page click heatmap over the page itself. A three-page demo shop (Acme
+`page_view` and `click` events on any web page (plus a `page_exit` summary of
+each page view) and sends them to a Node/Express API, which validates them and
+stores them in MongoDB. A Next.js dashboard lists the sessions, replays each one
+as an ordered user journey, and draws per-page click heatmaps over the page
+itself. Beyond the brief: segment filters, frustration insights (rage clicks,
+dead clicks, quick backs, excessive scrolling), ranked elements, and scroll and
+attention maps. A three-page demo shop (Acme
 Roasters, fictional) and a seed script supply data to look at.
 
 **Live:** [Dashboard](https://useranalytics-dashboard.vercel.app) ·
@@ -934,12 +937,15 @@ collection, the API then builds it from the events.
   the rate limit once there is more than one server instance.
 - **Reliable ingestion:** a client `event_id` with a unique index, so the
   tracker can retry failed batches without creating duplicates.
-- **Better heatmaps:** store each click relative to its element (a CSS
-  selector plus an offset), so clicks map onto any layout. Also scroll-depth
-  events.
+- **Better heatmaps:** place each click relative to its element (its selector
+  and box are already recorded), so clicks map onto any layout.
+- **Planned next (Trailmark v2, M6 in `docs/v2-plan.md`):** custom tags
+  (`window.trailmark.tag`), session labels, comparing two segments side by
+  side, privacy opt-outs (`data-cf-ignore` on elements, `data-strip-query` on
+  the script tag), and "sessions that clicked this element" from the heatmap.
 - **Retention:** a TTL index on events, with their session summaries removed
   alongside.
-- **Tracker:** single-page-app support (`history.pushState` and `popstate`).
+- **Tracker:** single-page-app page views (`history.pushState` and `popstate`).
 - **Live updates:** server-sent events or websockets instead of polling.
 - **Tests:** a Playwright smoke test of the dashboard in a real browser.
 

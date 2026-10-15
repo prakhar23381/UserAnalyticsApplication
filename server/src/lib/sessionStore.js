@@ -51,8 +51,9 @@ export function summarize(events) {
     session_id: first.session_id,
     first_seen: first.timestamp,
     last_seen: last.timestamp,
-    duration_ms: last.timestamp - first.timestamp,
-    event_count: events.length,
+    duration_ms: last.timestamp - first.timestamp, // page exits included: time on the last page counts
+    event_count: events.filter((event) => event.type !== 'page_exit').length, // page views and clicks, as the spec counts
+    events_seen: events.length, // every event, for the guard in save()
     page_views: events.filter((event) => event.type === 'page_view').length,
     clicks: events.filter((event) => event.type === 'click').length,
     ...findInsights(events).counts,
@@ -73,12 +74,12 @@ export function summarize(events) {
  * Writes a summary unless the stored one was built from more events: two
  * batches of one session can be stored and recomputed at the same time, and
  * the slower recompute may have read fewer events. Events are only ever added,
- * so more events means newer.
+ * so more events (of any type: `events_seen`) means newer.
  */
 async function save(doc) {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      await Session.replaceOne({ session_id: doc.session_id, event_count: { $lte: doc.event_count } }, doc, { upsert: true });
+      await Session.replaceOne({ session_id: doc.session_id, events_seen: { $lte: doc.events_seen } }, doc, { upsert: true });
       return;
     } catch (err) {
       // Duplicate key: a newer summary is stored (the filter missed, so the upsert

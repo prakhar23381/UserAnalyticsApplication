@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupByPageVisit, pageViewNote, sourceOf } from './journey';
+import { groupByPageVisit, pageViewNote, sourceOf, visitEngagement } from './journey';
 import type { EventType, TrackedEvent } from './types';
 
 const HOME = 'http://localhost:4000/demo';
@@ -82,5 +82,35 @@ describe('pageViewNote', () => {
 
   it('leaves out a referrer on the same site', () => {
     expect(pageViewNote({ ...event('page_view', PRODUCTS), referrer: `${HOME}/` })).toBe('');
+  });
+});
+
+describe('page exits', () => {
+  const view = (pv_id: string, page_url = HOME) => ({ ...event('page_view', page_url), pv_id });
+  const exit = (pv_id: string | undefined, page_url: string, active_ms: number, scroll_depth = 900) => ({
+    ...event('page_exit', page_url),
+    ...(pv_id && { pv_id }),
+    active_ms,
+    scroll_depth,
+  });
+
+  it('attaches the latest exit to its page view, by pv_id, without making it a row', () => {
+    const events = [view('a'), exit('a', HOME, 1000), view('b', PRODUCTS), exit('a', HOME, 4000), exit('b', PRODUCTS, 2000)];
+    const visits = groupByPageVisit(events);
+    expect(visits.map((v) => [v.events.length, v.exit?.active_ms])).toEqual([
+      [1, 4000],
+      [1, 2000],
+    ]);
+  });
+
+  it('falls back to the current visit on the same page without a pv_id, and drops orphans', () => {
+    const visits = groupByPageVisit([event('page_view', HOME), exit(undefined, HOME, 3000), exit(undefined, PRODUCTS, 9000)]);
+    expect(visits.map((v) => v.exit?.active_ms)).toEqual([3000]);
+  });
+
+  it('describes active time and how far down the page the visitor got', () => {
+    const [visit] = groupByPageVisit([view('a'), { ...exit('a', HOME, 12_000, 1500), doc_h: 2000 }]);
+    expect(visitEngagement(visit, (ms) => `${ms / 1000}s`)).toBe('Active 12s · scrolled 75%');
+    expect(visitEngagement(groupByPageVisit([view('b')])[0], String)).toBeNull();
   });
 });

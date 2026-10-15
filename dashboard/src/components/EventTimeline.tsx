@@ -2,9 +2,9 @@ import { Flame } from 'lucide-react';
 import Link from 'next/link';
 import EventBadge from '@/components/EventBadge';
 import InsightChip from '@/components/InsightChip';
-import { describeTarget, formatDateTime, formatOffset, pathOf } from '@/lib/format';
+import { describeTarget, formatDateTime, formatDuration, formatOffset, pathOf } from '@/lib/format';
 import { eventInsights } from '@/lib/insights';
-import { groupByPageVisit, pageViewNote } from '@/lib/journey';
+import { groupByPageVisit, pageViewNote, visitEngagement } from '@/lib/journey';
 import type { TrackedEvent } from '@/lib/types';
 
 function EventRow({ event, start }: { event: TrackedEvent; start: number }) {
@@ -49,6 +49,7 @@ export default function EventTimeline({
       {groupByPageVisit(events).map((visit) => {
         const first = visit.events[0];
         const clicks = visit.events.filter((event) => event.type === 'click').length;
+        const engagement = visitEngagement(visit, formatDuration);
         return (
           <li key={first._id} className="overflow-hidden rounded-xl border border-line bg-surface shadow-xs">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line bg-surface-2 px-4 py-2.5">
@@ -58,6 +59,7 @@ export default function EventTimeline({
               <span className="text-xs text-ink-3">
                 {clicks} {clicks === 1 ? 'click' : 'clicks'}
               </span>
+              {engagement && <span className="text-xs text-ink-3">· {engagement}</span>}
               <Link
                 href={heatmapHref(first)}
                 scroll={false}

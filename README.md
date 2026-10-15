@@ -315,7 +315,8 @@ from somewhere else, give it the API's endpoint:
 | Field | Events | Notes |
 |---|---|---|
 | `session_id` | all | From `localStorage` key `cf_session`. A new one starts after 30 minutes without events. The tabs of one browser share it. If storage is blocked, it is kept in memory for the page's lifetime. |
-| `type` | all | `page_view` or `click` |
+| `type` | all | `page_view`, `click`, or `page_exit` (a page view's totals, below) |
+| `pv_id` | all | The page view the event belongs to. A page restored from the back/forward cache gets a new one |
 | `page_url` | all | `location.href`. The server stores a normalized copy and keeps the original as `raw_url`. |
 | `timestamp` | all | Client clock, ISO 8601 UTC |
 | `referrer` | all | `document.referrer`, when there is one |
@@ -324,6 +325,10 @@ from somewhere else, give it the API's endpoint:
 | `x`, `y` | click | `pageX` and `pageY`: document coordinates in CSS px, rounded. A keyboard or scripted click has no pointer position, so it is placed at the element's centre. |
 | `target` | click | The nearest link, button or form field (else the clicked element): `tag`, `id`, `classes`, and `text` for links, buttons and labels only, cut to 80 characters. Also `selector`, a short CSS path to the element (from the nearest `id`, at most 5 steps of tag, id, two classes and `:nth-of-type`), and `box`, its `{ x, y, w, h }` in page px |
 | `dead` | click | `true` when nothing on the page changed within 1 s of the click (see Behaviour); absent otherwise |
+| `scroll_depth` | page_exit | The deepest point seen: scroll position plus window height, in px |
+| `scroll_distance` | page_exit | Px scrolled, down and up |
+| `active_ms` | page_exit | Time the page was visible with some input (scroll, pointer, key, touch) in the last 15 s |
+| `bands` | page_exit | Active ms per 50 px band of the page while it was on screen, from the top, at most 400 bands (20 000 px) |
 
 **Privacy.** Form field values are never read. Element text is collected only
 for links, buttons and labels. Selectors are built from tag names, ids and
@@ -337,6 +342,11 @@ end up in a URL, and so never in a tracked `page_url`.
 - It does nothing inside an iframe or when the URL has `?cf_preview=1`. This
   keeps the dashboard's heatmap preview from recording visits.
 - A page restored from the back/forward cache counts as a new `page_view`.
+- **Page exits.** When the page is hidden or left, the tracker sends a
+  `page_exit` with running totals for the page view, so a tab switched away
+  and back sends a larger total later; reads take the latest per `pv_id`. A
+  summary that didn't change isn't sent again. It keeps its page view's
+  session id and never renews the session.
 - **Dead clicks.** Each click is held for 1 s while a `MutationObserver`, a
   scroll listener and the URL show whether the page reacted. If nothing
   changed, the click is sent with `dead: true`. The observer runs only while a
@@ -457,12 +467,13 @@ Each event is validated on its own:
 
 | Field | Rule |
 |---|---|
-| `type` | `page_view` or `click` |
-| `session_id` | 1–64 characters of `A-Z a-z 0-9 _ -` |
+| `type` | `page_view`, `click` or `page_exit` |
+| `session_id`, `pv_id` | 1–64 characters of `A-Z a-z 0-9 _ -`; `pv_id` is optional except on `page_exit` |
 | `page_url` | An http(s) URL of up to 2048 characters |
 | `timestamp` | ISO 8601, no more than 24 hours in the future |
 | `viewport_w`, `viewport_h`, `doc_w`, `doc_h` | Numbers from 0 to 100 000 |
 | `x`, `y` | Clicks only: numbers from 0 to 100 000 |
+| `scroll_depth`, `scroll_distance`, `active_ms`, `bands` | `page_exit` only: px from 0 to 100 000; whole px up to 10 000 000; whole ms up to 24 h; at most 400 whole ms |
 
 Unknown fields are dropped and long strings are truncated.
 
@@ -723,13 +734,15 @@ collection summarizes them, one document per session, for the filters.
 | Field | Type | Notes |
 |---|---|---|
 | `session_id` | string | From the tracker |
-| `type` | `page_view` \| `click` | |
+| `type` | `page_view` \| `click` \| `page_exit` | |
+| `pv_id` | string | The page view, from trackers since v2 M5 |
 | `page_url` | string | Normalized: `origin + pathname`, without query, hash, trailing slash or `index.html`. Heatmaps group by it. |
 | `raw_url` | string | Exactly what the browser had, including UTM tags |
 | `timestamp` | Date | Client clock |
 | `received_at` | Date | Server clock |
 | `x`, `y`, `target` | number, number, object | Clicks only. `target` holds `tag`, `id`, `classes`, `text`, `selector` and `box` (`{ x, y, w, h }`) |
 | `dead` | boolean | Clicks only: `true` when the tracker saw nothing change within 1 s; absent otherwise |
+| `scroll_depth`, `scroll_distance`, `active_ms`, `bands` | number, number, number, number[] | `page_exit` only |
 | `viewport_w`, `viewport_h`, `doc_w`, `doc_h` | number | CSS px |
 | `device` | `mobile` \| `tablet` \| `desktop` | Derived on the server from `viewport_w`: under 768 is mobile, under 1024 is tablet. Never taken from the client. |
 | `referrer` | string | Optional |
@@ -748,8 +761,8 @@ is rebuilt from a session's events every time a batch for it arrives:
 | Field | Notes |
 |---|---|
 | `session_id` | Unique |
-| `first_seen`, `last_seen`, `duration_ms` | From the events' client timestamps |
-| `event_count`, `page_views`, `clicks` | |
+| `first_seen`, `last_seen`, `duration_ms` | From the events' client timestamps, page exits included, so the time on the last page counts |
+| `event_count`, `page_views`, `clicks` | `event_count` is page views plus clicks; page exits only carry totals. `events_seen` counts every event and guards against a slower rebuild overwriting a newer one |
 | `rage_clicks`, `dead_clicks`, `quick_backs` | Counts of each [insight](#insights) |
 | `pages`, `entry_page`, `exit_page` | Normalized page URLs; `pages` in the order first visited |
 | `device`, `browser`, `os`, `country` | From the first event (country: the first event that has one). Browser and OS come from the user agent ([`lib/userAgent.js`](server/src/lib/userAgent.js)) |

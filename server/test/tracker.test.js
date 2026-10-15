@@ -99,6 +99,7 @@ describe('tracker.js', () => {
       const [event] = await page.sent();
       expect(event).toEqual({
         session_id: expect.stringMatching(SESSION_ID_RE),
+        pv_id: expect.stringMatching(SESSION_ID_RE),
         type: 'page_view',
         page_url: PAGE,
         timestamp: expect.any(String),
@@ -272,6 +273,97 @@ describe('tracker.js', () => {
       expect(page.pendingTimers().map((t) => t.ms)).toEqual([5000]);
       page.flush();
       expect((await sentClicks(page)).some((e) => e.dead)).toBe(false);
+    });
+  });
+
+  describe('engagement', () => {
+    // A clock the page reads through Date.now(), moved by hand.
+    const withClock = (clock) => (win) => {
+      const RealDate = win.Date;
+      win.Date = class extends RealDate {
+        static now() {
+          return clock.t;
+        }
+      };
+      Object.defineProperty(win, 'scrollY', { get: () => clock.y, configurable: true });
+    };
+    const hide = (page) => {
+      Object.defineProperty(page.win.document, 'visibilityState', { value: 'hidden', configurable: true });
+      page.win.document.dispatchEvent(new page.win.Event('visibilitychange'));
+    };
+    const show = (page) => {
+      Object.defineProperty(page.win.document, 'visibilityState', { value: 'visible', configurable: true });
+      page.win.document.dispatchEvent(new page.win.Event('visibilitychange'));
+    };
+    const scrollTo = (page, clock, y) => {
+      clock.y = y;
+      page.win.dispatchEvent(new page.win.Event('scroll'));
+    };
+    const exits = async (page) => (await page.sent()).filter((e) => e.type === 'page_exit');
+
+    it("tags events with their page view, and sends the view's totals when the page is hidden", async () => {
+      const clock = { t: 1_000_000, y: 0 };
+      const page = await openPage({ prepare: withClock(clock) });
+      page.click('#add');
+      clock.t += 4000;
+      scrollTo(page, clock, 600); // 4 s with 0–900 on screen
+      clock.t += 3000;
+      hide(page); // 3 s with 600–1500 on screen
+
+      const events = await page.sent();
+      const [view, click] = events;
+      const exit = events.find((e) => e.type === 'page_exit');
+      expect(click.pv_id).toBe(view.pv_id);
+      expect(exit).toMatchObject({ session_id: view.session_id, pv_id: view.pv_id, scroll_depth: 1500, scroll_distance: 600, active_ms: 7000 });
+      expect(exit.bands).toHaveLength(30); // 50 px bands down to 1500
+      expect([exit.bands[0], exit.bands[11], exit.bands[12], exit.bands[17], exit.bands[18], exit.bands[29]]).toEqual([4000, 4000, 7000, 7000, 3000, 3000]);
+      expect(events.map((e) => validateEvent(e).error)).toEqual(events.map(() => undefined));
+    });
+
+    it('stops counting active time 15 s after the last input, and while hidden', async () => {
+      const clock = { t: 1_000_000, y: 0 };
+      const page = await openPage({ prepare: withClock(clock) });
+      clock.t += 60_000; // idle: only the first 15 s count
+      hide(page);
+      clock.t += 60_000; // hidden: nothing counts
+      show(page); // coming back counts as activity
+      clock.t += 2000;
+      hide(page);
+      expect((await exits(page)).map((e) => e.active_ms)).toEqual([15_000, 17_000]);
+    });
+
+    it('sends one summary when the page is left, whichever of pagehide and hiding comes first', async () => {
+      for (const order of ['hide first', 'pagehide first']) {
+        const clock = { t: 1_000_000, y: 0 };
+        const page = await openPage({ prepare: withClock(clock) });
+        clock.t += 1000;
+        if (order === 'hide first') hide(page);
+        page.win.dispatchEvent(new page.win.Event('pagehide'));
+        clock.t += 1; // the next event comes a moment later
+        if (order === 'pagehide first') hide(page);
+        expect((await exits(page)).map((e) => e.active_ms), order).toEqual([1000]);
+      }
+    });
+
+    it("keeps the page view's session, even after 30 idle minutes, and doesn't renew it", async () => {
+      const clock = { t: 1_000_000, y: 0 };
+      const page = await openPage({ prepare: withClock(clock) });
+      const stored = page.win.localStorage.getItem('cf_session');
+      clock.t += 31 * MINUTE;
+      hide(page);
+      const [view, exit] = await page.sent();
+      expect(exit.session_id).toBe(view.session_id);
+      expect(page.win.localStorage.getItem('cf_session')).toBe(stored);
+    });
+
+    it('gives a page restored from the back/forward cache its own page view id', async () => {
+      const page = await openPage();
+      const event = new page.win.Event('pageshow');
+      Object.defineProperty(event, 'persisted', { value: true });
+      page.win.dispatchEvent(event);
+      page.flush();
+      const [first, restored] = await page.sent();
+      expect(restored.pv_id).not.toBe(first.pv_id);
     });
   });
 

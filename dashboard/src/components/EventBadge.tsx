@@ -10,6 +10,11 @@ const BADGES: Record<EventType, { label: string; className: string }> = {
     label: 'Click',
     className: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
   },
+  // Journeys show a visit's exit in its header, not as a row; the badge is for the lab and completeness.
+  page_exit: {
+    label: 'Exit',
+    className: 'bg-slate-200 text-slate-800 dark:bg-slate-500/20 dark:text-slate-300',
+  },
 };
 
 export default function EventBadge({ type }: { type: EventType }) {

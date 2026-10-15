@@ -10,7 +10,8 @@ const sessionSchema = new mongoose.Schema(
     first_seen: { type: Date, required: true },
     last_seen: { type: Date, required: true },
     duration_ms: { type: Number, required: true },
-    event_count: { type: Number, required: true },
+    event_count: { type: Number, required: true }, // page views and clicks
+    events_seen: { type: Number, required: true }, // every event, page exits too (sessionStore's write guard)
     page_views: { type: Number, required: true },
     clicks: { type: Number, required: true },
     rage_clicks: { type: Number, default: 0 }, // lib/insights.js: bursts of rapid clicks

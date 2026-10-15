@@ -1,7 +1,7 @@
 // Response shapes of the API (server/src/routes). Field names are snake_case, as stored.
 import type { OptionsKey } from './filters';
 
-export type EventType = 'page_view' | 'click';
+export type EventType = 'page_view' | 'click' | 'page_exit';
 export type Device = 'mobile' | 'tablet' | 'desktop';
 
 /** An element's box in page px, as the tracker measured it. */
@@ -35,6 +35,12 @@ export interface TrackedEvent {
   dead?: true; // clicks only: the page didn't react within 1 s (tracker)
   rage?: true; // journey only: part of a rage-click burst
   quick_back?: true; // journey only: a page view left again within 7 s
+  pv_id?: string; // the page view this event belongs to (trackers since M5)
+  // page_exit only: the page view's running totals when the page was hidden or left
+  scroll_depth?: number; // deepest px seen
+  scroll_distance?: number; // px scrolled, both ways
+  active_ms?: number;
+  bands?: number[]; // active ms per 50 px band on screen
   viewport_w: number;
   viewport_h: number;
   doc_w: number;

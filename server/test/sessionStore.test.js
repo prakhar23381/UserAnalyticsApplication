@@ -29,6 +29,7 @@ describe('summarize', () => {
       last_seen: new Date(BASE_TIME + 30_000),
       duration_ms: 30_000,
       event_count: 4,
+      events_seen: 4,
       page_views: 3,
       clicks: 1,
       rage_clicks: 0,
@@ -48,6 +49,12 @@ describe('summarize', () => {
       source: 'Instagram',
       updated_at: expect.any(Date),
     });
+  });
+
+  it("counts page views and clicks as events, but lets a page exit end the session's duration", () => {
+    const exit = eventDoc({ type: 'page_exit', at: 45, pv_id: 'pv1', scroll_depth: 900, scroll_distance: 0, active_ms: 40_000, bands: [] });
+    const summary = summarize([eventDoc({ at: 0, pv_id: 'pv1' }), clickDoc({ at: 5, pv_id: 'pv1' }), exit]);
+    expect(summary).toMatchObject({ event_count: 2, events_seen: 3, page_views: 1, clicks: 1, duration_ms: 45_000 });
   });
 
   it('leaves out a referrer from the same site, and falls back to it or Direct for the source', () => {

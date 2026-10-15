@@ -223,3 +223,22 @@ stay as they are and Heat is added as a third view.
 | M4-D5 | "Sessions that clicked it" | **Deferred** (needs an event-based session filter); fits M6 |
 
 Footer: page views and clicks for the page in the segment, plus the legend.
+
+## M5 in detail (approved 2026-10-15)
+
+Three commits on `v2`: **M5a** page-view id and end-of-visit summary (tracker, server,
+journey), **M5b** scroll and attention maps, **M5c** excessive scrolling as an insight, seed.
+
+| # | Decision | Choice |
+|---|---|---|
+| M5-D1 | Storing the summary | A new event type **`page_exit`** in `events` (append-only, same ingest path). Updates the type enum, `validateEvent`, `EventBadge`, the README |
+| M5-D2 | Repeated summaries | The tracker sends a **running total** each time the page is hidden or left; reads take the latest per `pv_id` |
+| M5-D3 | Active time | Visible **and** some input (scroll, pointer, key, touch) within the last 15 s; attention bands count active time only |
+| M5-D4 | Excessive scrolling | Scroll distance ≥ **3×** the page height, on a page taller than two windows |
+| M5-D5 | Maps | `GET /api/engagement` returns the newest 2,000 page-view summaries; the browser computes reach and attention (`lib/engagement.ts`), mapping depth like clicks |
+| M5-D6 | Session numbers | `event_count` counts page views and clicks only; `duration_ms` and `last_seen` include exits |
+
+**`page_exit` fields:** `pv_id`, `scroll_depth` (deepest px seen: scroll + window height),
+`scroll_distance` (px scrolled, both ways), `active_ms`, `bands` (active ms per 50 px band
+in view, ≤ 400 bands), plus the usual page, size and session fields. It keeps the page
+view's session id and never renews the session. `page_view` and `click` gain `pv_id`.

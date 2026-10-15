@@ -24,6 +24,11 @@
  * Clicks on form fields, labels and editable text (they only focus) and
  * ctrl/⌘/shift clicks (they open a new tab or window) are never flagged.
  *
+ * Every page view has an id (`pv_id`), and when the page is hidden or left the
+ * tracker sends a `page_exit` with running totals for that view: the deepest
+ * point seen, px scrolled, active time (visible, with input in the last 15 s)
+ * and active time per 50 px band of the page on screen.
+ *
  * It does nothing inside an iframe or when the URL has ?cf_preview=1 (the
  * dashboard's heatmap preview), and never throws into the host page.
  */
@@ -40,7 +45,11 @@
   var TEXT_TAGS = { A: true, BUTTON: true, LABEL: true };
   var SELECTOR_DEPTH = 5; // elements, counting the clicked one
   var SELECTOR_MAX = 256; // what the API accepts; a longer selector is left out
-  var DEAD_AFTER_MS = 1000; // a click that changed nothing for this long is dead
+  var DEAD_AFTER_MS = 1000;
+  var IDLE_AFTER_MS = 15000; // time after the last input that still counts as active
+  var BAND_PX = 50;
+  var MAX_BANDS = 400; // 20 000 px of page
+  var MAX_SCROLL_DISTANCE = 10000000; // what the API accepts // a click that changed nothing for this long is dead
   var FOCUS_ONLY = 'input, select, textarea, label';
 
   var endpoint;
@@ -50,6 +59,7 @@
   var held = []; // clicks waiting to be judged dead or not: { event, at, href }
   var lastChange = 0; // when the page last changed (DOM or scroll), while clicks are held
   var observer = null;
+  var view = null; // the current page view's engagement, see startView
 
   // Wraps every entry point: an analytics script must never break the page.
   function safe(fn) {
@@ -125,10 +135,11 @@
 
   // ---- events ------------------------------------------------------------
 
-  function build(type, fields) {
+  // `session`: a page_exit keeps its page view's session and doesn't renew it.
+  function build(type, fields, session) {
     var root = document.documentElement;
     var event = {
-      session_id: sessionId(),
+      session_id: session || sessionId(),
       type: type,
       page_url: location.href,
       timestamp: new Date().toISOString(),
@@ -138,6 +149,7 @@
       doc_w: root.scrollWidth,
       doc_h: root.scrollHeight,
     };
+    if (view) event.pv_id = view.id;
     for (var key in fields) event[key] = fields[key];
     return event;
   }
@@ -150,6 +162,95 @@
 
   function track(type, fields) {
     enqueue(build(type, fields));
+  }
+
+  // ---- engagement --------------------------------------------------------
+
+  function startView() {
+    var now = Date.now();
+    view = {
+      id: newId(),
+      session: null,
+      depth: window.scrollY + window.innerHeight,
+      distance: 0,
+      active: 0,
+      bands: [],
+      lastY: window.scrollY,
+      lastTick: now,
+      lastInput: now, // opening the page counts as activity
+      visible: document.visibilityState !== 'hidden',
+      sent: '',
+    };
+    var event = build('page_view');
+    view.session = event.session_id;
+    enqueue(event);
+  }
+
+  // Adds the active time since the last tick, at the position the page was at.
+  function account(now) {
+    if (!view) return;
+    if (view.visible) {
+      var ms = Math.min(now, view.lastInput + IDLE_AFTER_MS) - view.lastTick;
+      if (ms > 0) {
+        view.active += ms;
+        var first = Math.floor(Math.max(0, view.lastY) / BAND_PX);
+        var last = Math.min(MAX_BANDS - 1, Math.floor((Math.max(0, view.lastY) + window.innerHeight - 1) / BAND_PX));
+        for (var i = first; i <= last; i++) view.bands[i] = (view.bands[i] || 0) + ms;
+      }
+    }
+    view.lastTick = now;
+  }
+
+  function onInput() {
+    if (!view) return;
+    var now = Date.now();
+    if (now - view.lastTick >= 200) account(now); // mousemove fires often; a 200 ms grain is enough
+    view.lastInput = now;
+  }
+
+  function onScroll() {
+    if (!view) return;
+    var now = Date.now();
+    account(now);
+    var y = window.scrollY;
+    view.distance += Math.abs(y - view.lastY);
+    view.lastY = y;
+    view.depth = Math.max(view.depth, y + window.innerHeight);
+    view.lastInput = now;
+  }
+
+  // Leaving: time stops here, so a visibilitychange that follows adds nothing and sends no second summary.
+  function onPageHide() {
+    if (view) {
+      account(Date.now());
+      view.visible = false;
+    }
+    leave();
+  }
+
+  function onVisibility() {
+    if (!view) return;
+    var now = Date.now();
+    account(now);
+    view.visible = document.visibilityState !== 'hidden';
+    if (view.visible) view.lastInput = now; // coming back counts as activity
+  }
+
+  // The page view's running totals, or null when nothing changed since the last one sent.
+  function summary() {
+    account(Date.now());
+    var bands = [];
+    for (var i = 0; i < view.bands.length; i++) bands.push(Math.round(view.bands[i] || 0));
+    var fields = {
+      scroll_depth: Math.round(view.depth),
+      scroll_distance: Math.min(Math.round(view.distance), MAX_SCROLL_DISTANCE),
+      active_ms: Math.round(view.active),
+      bands: bands,
+    };
+    var key = fields.scroll_depth + ':' + fields.scroll_distance + ':' + fields.active_ms;
+    if (key === view.sent) return null;
+    view.sent = key;
+    return build('page_exit', fields, view.session);
   }
 
   // ---- dead clicks -------------------------------------------------------
@@ -193,6 +294,14 @@
   // Leaving or hiding the page counts as a change: send every held click unflagged, now.
   function sendAll() {
     while (held.length > 0) settle(held[0], false);
+    flush();
+  }
+
+  // The page is hidden or left: held clicks, the page view's summary, everything queued.
+  function leave() {
+    while (held.length > 0) settle(held[0], false);
+    var exit = view && summary();
+    if (exit) queue.push(exit);
     flush();
   }
 
@@ -318,19 +427,23 @@
     if (!endpoint) return;
 
     window.__cfTracker = { flush: safe(sendAll) };
-    track('page_view');
+    startView();
 
     // Capture phase: page code that stops propagation can't hide clicks from us.
     document.addEventListener('click', safe(onClick), true);
     // Scrolling anywhere (a page or a panel) means a click did something.
     document.addEventListener('scroll', safe(changed), { capture: true, passive: true });
+    window.addEventListener('scroll', safe(onScroll), { passive: true });
+    var inputs = ['mousemove', 'pointerdown', 'keydown', 'touchstart', 'wheel'];
+    for (var i = 0; i < inputs.length; i++) document.addEventListener(inputs[i], safe(onInput), { capture: true, passive: true });
     document.addEventListener('visibilitychange', safe(function () {
-      if (document.visibilityState === 'hidden') sendAll();
+      onVisibility();
+      if (document.visibilityState === 'hidden') leave();
     }));
-    window.addEventListener('pagehide', safe(sendAll));
+    window.addEventListener('pagehide', safe(onPageHide));
     // A page restored from the back/forward cache doesn't rerun scripts: count the visit.
     window.addEventListener('pageshow', safe(function (e) {
-      if (e.persisted) track('page_view');
+      if (e.persisted) startView();
     }));
   })();
 })();

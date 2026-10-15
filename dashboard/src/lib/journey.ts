@@ -2,7 +2,8 @@ import type { TrackedEvent } from './types';
 
 export interface PageVisit {
   page_url: string;
-  events: TrackedEvent[];
+  events: TrackedEvent[]; // page views and clicks
+  exit?: TrackedEvent; // the latest page_exit for this visit: its running totals
 }
 
 /**
@@ -53,13 +54,30 @@ export function pageViewNote(event: TrackedEvent): string {
 
 export function groupByPageVisit(events: TrackedEvent[]): PageVisit[] {
   const visits: PageVisit[] = [];
+  const byPageView = new Map<string, PageVisit>();
   for (const event of events) {
     const current = visits.at(-1);
+    if (event.type === 'page_exit') {
+      // Its page view's visit (by pv_id), else the current visit on the same page. Later totals win.
+      const visit = (event.pv_id && byPageView.get(event.pv_id)) || (current?.page_url === event.page_url ? current : undefined);
+      if (visit) visit.exit = event;
+      continue;
+    }
     if (!current || event.type === 'page_view' || event.page_url !== current.page_url) {
-      visits.push({ page_url: event.page_url, events: [event] });
+      const visit: PageVisit = { page_url: event.page_url, events: [event] };
+      visits.push(visit);
+      if (event.type === 'page_view' && event.pv_id) byPageView.set(event.pv_id, visit);
     } else {
       current.events.push(event);
     }
   }
   return visits;
+}
+
+/** "Active 12s · scrolled 76%" for a visit with an exit summary, else null. */
+export function visitEngagement(visit: PageVisit, formatMs: (ms: number) => string): string | null {
+  const exit = visit.exit;
+  if (!exit || exit.active_ms === undefined || exit.scroll_depth === undefined) return null;
+  const scrolled = exit.doc_h > 0 ? Math.min(1, exit.scroll_depth / exit.doc_h) : 1;
+  return `Active ${formatMs(exit.active_ms)} · scrolled ${Math.round(scrolled * 100)}%`;
 }

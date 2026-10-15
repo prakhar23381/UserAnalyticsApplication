@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-export const EVENT_TYPES = ['page_view', 'click'];
+export const EVENT_TYPES = ['page_view', 'click', 'page_exit'];
 export const DEVICES = ['mobile', 'tablet', 'desktop'];
 
 // What was clicked, so the journey can say `button#buy "Add to cart"`, and where
@@ -25,6 +25,14 @@ const eventSchema = new mongoose.Schema(
     y: Number,
     target: targetSchema,
     dead: Boolean, // true when nothing on the page changed within 1 s (tracker); absent otherwise
+
+    // all types, from trackers since M5: the page view this event belongs to
+    pv_id: String,
+    // page_exit only: running totals for the page view, sent when the page is hidden or left
+    scroll_depth: Number, // deepest px seen (scroll position + window height)
+    scroll_distance: Number, // px scrolled, both directions
+    active_ms: Number, // visible, with input in the last 15 s
+    bands: { type: [Number], default: undefined }, // active ms per 50 px band of the page on screen
 
     // both types: needed to compare clicks across screen sizes
     viewport_w: Number,

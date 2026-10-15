@@ -11,6 +11,11 @@ const MAX_FUTURE_MS = 24 * 60 * 60 * 1000;
 const TARGET_LIMITS = { tag: 32, id: 128, classes: 256, text: 80 };
 const MAX_SELECTOR = 256; // a cut-off selector would name the wrong element, so a longer one is dropped
 const BOX_FIELDS = ['x', 'y', 'w', 'h'];
+const MAX_BANDS = 400;
+const MAX_ACTIVE_MS = 24 * 60 * 60 * 1000;
+const MAX_SCROLL_DISTANCE = 10_000_000;
+
+const isCount = (value, max) => Number.isInteger(value) && value >= 0 && value <= max;
 const SIZE_FIELDS = ['viewport_w', 'viewport_h', 'doc_w', 'doc_h'];
 
 const fail = (error) => ({ ok: false, error });
@@ -91,6 +96,28 @@ export function validateEvent(input) {
   };
   if (typeof input.referrer === 'string' && input.referrer) {
     value.referrer = input.referrer.slice(0, MAX_URL_LENGTH);
+  }
+  if (input.pv_id !== undefined) {
+    if (typeof input.pv_id !== 'string' || !SESSION_ID_RE.test(input.pv_id)) {
+      return fail('pv_id must be 1-64 characters of A-Z, a-z, 0-9, _ or -');
+    }
+    value.pv_id = input.pv_id;
+  }
+
+  if (type === 'page_exit') {
+    if (value.pv_id === undefined) return fail('page_exit needs a pv_id');
+    if (!isPx(input.scroll_depth)) return fail(`page_exit needs scroll_depth from 0 to ${MAX_PX}`);
+    if (!isCount(input.scroll_distance, MAX_SCROLL_DISTANCE)) return fail('page_exit needs scroll_distance as a whole number of px');
+    if (!isCount(input.active_ms, MAX_ACTIVE_MS)) return fail('page_exit needs active_ms as whole milliseconds, at most 24 h');
+    if (!Array.isArray(input.bands) || input.bands.length > MAX_BANDS || !input.bands.every((ms) => isCount(ms, MAX_ACTIVE_MS))) {
+      return fail(`page_exit needs bands: at most ${MAX_BANDS} whole milliseconds`);
+    }
+    Object.assign(value, {
+      scroll_depth: Math.round(input.scroll_depth),
+      scroll_distance: input.scroll_distance,
+      active_ms: input.active_ms,
+      bands: input.bands,
+    });
   }
 
   if (type === 'click') {

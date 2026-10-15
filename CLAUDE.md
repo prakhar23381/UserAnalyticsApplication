@@ -197,8 +197,10 @@ trade-offs in the README instead.
   and they are inlined at build time. Only the `*.example` files are committed.
 
 **Data invariants.** Every change must keep these true:
-- **Event `type`** ∈ `page_view | click`. A new type means updating the
+- **Event `type`** ∈ `page_view | click | page_exit`. A new type means updating the
   Mongoose enum, `validateEvent.js`, the dashboard `EventBadge`, and the README.
+  `page_exit` carries a page view's running totals (latest per `pv_id` wins); it is
+  not counted in `event_count`, but it does extend a session's duration.
 - **`page_url`** is always the normalized URL (`origin + pathname`, no
   query/hash/trailing slash/`index.html`), produced **only** by
   `server/src/lib/normalizeUrl.js`. The browser's full URL is in `raw_url`.

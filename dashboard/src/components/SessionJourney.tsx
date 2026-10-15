@@ -77,7 +77,8 @@ export default function SessionJourney({ id }: { id: string }) {
       <dl className="mb-6 grid grid-cols-2 gap-4 rounded-xl border border-line bg-surface p-4 text-sm shadow-xs sm:grid-cols-4">
         <Fact label="Started">{formatDateTime(first.timestamp)}</Fact>
         <Fact label="Duration">{formatDuration(Date.parse(last.timestamp) - Date.parse(first.timestamp))}</Fact>
-        <Fact label="Events">{events.length}</Fact>
+        {/* Page views and clicks, as the sessions list counts them; page exits only carry totals. */}
+        <Fact label="Events">{events.filter((event) => event.type !== 'page_exit').length}</Fact>
         <Fact label="Pages">{pages}</Fact>
         <Fact label="Device">
           <DeviceLabel device={first.device} />{' '}

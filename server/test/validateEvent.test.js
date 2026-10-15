@@ -59,6 +59,27 @@ describe('validateEvent', () => {
     expect(target({ box: [1, 2, 3, 4] })).toEqual({ tag: 'div' });
   });
 
+  it('accepts a page_exit with its running totals, and pv_id on any event', () => {
+    const exit = { ...base, type: 'page_exit', pv_id: 'pv-1', scroll_depth: 1800.4, scroll_distance: 2400, active_ms: 31_000, bands: [31_000, 31_000, 12_000] };
+    expect(validateEvent(exit).value).toMatchObject({ type: 'page_exit', pv_id: 'pv-1', scroll_depth: 1800, scroll_distance: 2400, active_ms: 31_000, bands: [31_000, 31_000, 12_000] });
+    expect(validateEvent({ ...click, pv_id: 'pv-1' }).value.pv_id).toBe('pv-1');
+    expect(validateEvent(click).value).not.toHaveProperty('pv_id'); // trackers from before M5
+    expect(validateEvent(pageView).value).not.toHaveProperty('bands'); // totals belong to page_exit only
+  });
+
+  it.each([
+    [{ pv_id: undefined }, 'page_exit needs a pv_id'],
+    [{ pv_id: 'bad id' }, 'pv_id must be 1-64 characters of A-Z, a-z, 0-9, _ or -'],
+    [{ scroll_depth: -1 }, 'page_exit needs scroll_depth from 0 to 100000'],
+    [{ scroll_distance: 1.5 }, 'page_exit needs scroll_distance as a whole number of px'],
+    [{ active_ms: 25 * 60 * 60 * 1000 }, 'page_exit needs active_ms as whole milliseconds, at most 24 h'],
+    [{ bands: Array(401).fill(0) }, 'page_exit needs bands: at most 400 whole milliseconds'],
+    [{ bands: [1, -1] }, 'page_exit needs bands: at most 400 whole milliseconds'],
+  ])('rejects a page_exit with %j', (change, error) => {
+    const exit = { ...base, type: 'page_exit', pv_id: 'pv-1', scroll_depth: 900, scroll_distance: 0, active_ms: 1000, bands: [1000], ...change };
+    expect(validateEvent(exit)).toEqual({ ok: false, error });
+  });
+
   it('keeps dead: true on a click only, and rejects a dead flag that is not a boolean', () => {
     expect(validateEvent({ ...click, dead: true }).value.dead).toBe(true);
     expect(validateEvent({ ...click, dead: false }).value).not.toHaveProperty('dead');

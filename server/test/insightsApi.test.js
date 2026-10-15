@@ -10,7 +10,8 @@ const app = createApp({ dashboardOrigins: [DASHBOARD] });
 const get = (path, query = {}) => request(app).get(path).query(query).set('Origin', DASHBOARD);
 const ids = (res) => res.body.data.map((s) => s.session_id).sort();
 
-// rage: three quick clicks on one spot · dead: one flagged click · back: home → products → home in 3 s · calm: none
+// rage: three quick clicks on one spot · dead: one flagged click · back: home → products → home in 3 s
+// hunt: 9000 px scrolled on a 2400 px page · calm: none
 const seed = () =>
   insert(
     eventDoc({ session_id: 'rage', at: 0 }),
@@ -22,6 +23,8 @@ const seed = () =>
     eventDoc({ session_id: 'back', at: 0, page_url: HOME }),
     eventDoc({ session_id: 'back', at: 4, page_url: PRODUCTS }),
     eventDoc({ session_id: 'back', at: 7, page_url: HOME }),
+    eventDoc({ session_id: 'hunt', at: 0, pv_id: 'h1' }),
+    eventDoc({ session_id: 'hunt', type: 'page_exit', at: 30, pv_id: 'h1', scroll_depth: 2400, scroll_distance: 9000, active_ms: 30_000, bands: [] }),
     eventDoc({ session_id: 'calm', at: 0 }),
     clickDoc({ session_id: 'calm', at: 9 }),
   );
@@ -30,8 +33,10 @@ describe('insights on sessions', () => {
   it('stores each insight count on the session row', async () => {
     await seed();
     const res = await get('/api/sessions');
-    const byId = Object.fromEntries(res.body.data.map((s) => [s.session_id, [s.rage_clicks, s.dead_clicks, s.quick_backs]]));
-    expect(byId).toEqual({ rage: [1, 1, 0], dead: [0, 1, 0], back: [0, 0, 1], calm: [0, 0, 0] });
+    const byId = Object.fromEntries(
+      res.body.data.map((s) => [s.session_id, [s.rage_clicks, s.dead_clicks, s.quick_backs, s.excessive_scrolls]]),
+    );
+    expect(byId).toEqual({ rage: [1, 1, 0, 0], dead: [0, 1, 0, 0], back: [0, 0, 1, 0], hunt: [0, 0, 0, 1], calm: [0, 0, 0, 0] });
   });
 
   it('filters on insights; a session needs all of the listed ones', async () => {
@@ -45,7 +50,7 @@ describe('insights on sessions', () => {
   it('counts sessions with each insight in the overview', async () => {
     await seed();
     const res = await get('/api/overview');
-    expect(res.body.totals).toMatchObject({ sessions: 4, rage_sessions: 1, dead_sessions: 2, quick_back_sessions: 1 });
+    expect(res.body.totals).toMatchObject({ sessions: 5, rage_sessions: 1, dead_sessions: 2, quick_back_sessions: 1, excessive_scroll_sessions: 1 });
   });
 
   it('offers every insight in the filter menus, with session counts', async () => {
@@ -55,6 +60,7 @@ describe('insights on sessions', () => {
       { value: 'rage', sessions: 1 },
       { value: 'dead', sessions: 2 },
       { value: 'quick_back', sessions: 1 },
+      { value: 'excessive_scroll', sessions: 1 },
     ]);
   });
 
@@ -70,5 +76,12 @@ describe('insights on sessions', () => {
 
     const back = await get('/api/sessions/back/events');
     expect(back.body.events.map((e) => e.quick_back ?? false)).toEqual([false, true, false]);
+
+    const hunt = await get('/api/sessions/hunt/events');
+    expect(hunt.body.events.map((e) => [e.type, e.excessive_scroll ?? false])).toEqual([
+      ['page_view', false],
+      ['page_exit', true],
+    ]);
+    expect(ids(await get('/api/sessions', { insights: 'excessive_scroll' }))).toEqual(['hunt']);
   });
 });

@@ -35,6 +35,7 @@ export interface TrackedEvent {
   dead?: true; // clicks only: the page didn't react within 1 s (tracker)
   rage?: true; // journey only: part of a rage-click burst
   quick_back?: true; // journey only: a page view left again within 7 s
+  excessive_scroll?: true; // journey only, on a page view's latest exit: scrolled ≥ 3 page heights
   pv_id?: string; // the page view this event belongs to (trackers since M5)
   // page_exit only: the page view's running totals when the page was hidden or left
   scroll_depth?: number; // deepest px seen
@@ -67,6 +68,7 @@ export interface SessionSummary {
   rage_clicks: number; // bursts (lib/insights.ts)
   dead_clicks: number;
   quick_backs: number;
+  excessive_scrolls: number;
   first_seen: string;
   last_seen: string;
   duration_ms: number;
@@ -177,6 +179,7 @@ export interface OverviewTotals {
   rage_sessions: number; // sessions with at least one rage click
   dead_sessions: number;
   quick_back_sessions: number;
+  excessive_scroll_sessions: number;
 }
 
 /** GET /api/overview */

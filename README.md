@@ -148,7 +148,7 @@ end-to-end check. The current rules put every checked click on its element.
 
 ### Insights
 
-Three frustration signals, found in each session's events in order
+Four frustration signals, found in each session's events in order
 ([`server/src/lib/insights.js`](server/src/lib/insights.js)) and stored as
 counts on its summary:
 
@@ -157,6 +157,7 @@ counts on its summary:
 | Rage click | 3 or more clicks in a row on one page, each at most 700 ms after the one before and within 30 px of the first. Measuring from the first click keeps a burst from drifting across the page. Counted once per burst |
 | Dead click | A click the tracker flagged `dead`: nothing on the page changed, scrolled or navigated within 1 s. Clicks stored before the tracker could flag them count as not dead |
 | Quick back | Page views A → B → A, with less than 7 s on B. Counted once per B |
+| Excessive scrolling | A page view whose latest summary (`page_exit`) scrolled at least 3 page heights, on a page taller than two windows. Counted once per page view |
 
 ## Tech stack
 
@@ -431,7 +432,7 @@ the same as in the database.
 | `min_duration`, `max_duration` | Seconds, inclusive |
 | `min_pages`, `max_pages` | Page views, inclusive |
 | `min_clicks`, `max_clicks` | Clicks, inclusive |
-| `insights` | Comma-separated: `rage`, `dead`, `quick_back`. A session must have **all** of the listed insights |
+| `insights` | Comma-separated: `rage`, `dead`, `quick_back`, `excessive_scroll`. A session must have **all** of the listed insights |
 - **Rate limit.** `POST /api/events` allows 120 requests a minute per client.
   Responses carry `RateLimit` and `RateLimit-Policy` headers, and a client over
   the limit gets `429` with a `Retry-After` header. The read endpoints aren't
@@ -514,6 +515,7 @@ the traffic fields describe the session's first event. `source` is
       "rage_clicks": 1,
       "dead_clicks": 3,
       "quick_backs": 0,
+      "excessive_scrolls": 0,
       "first_seen": "2026-10-13T05:05:40.142Z",
       "last_seen": "2026-10-13T05:06:05.388Z",
       "duration_ms": 25246,
@@ -545,7 +547,8 @@ format gets `400`, and an unknown session gets `404`. `session` is the same
 summary as a row of `GET /api/sessions` (shortened here). Clicks in a rage
 burst carry `"rage": true`, a click the tracker flagged carries
 `"dead": true`, and the page view of a quick back's B carries
-`"quick_back": true` ([Insights](#insights)).
+`"quick_back": true`, and a page view's latest `page_exit` carries
+`"excessive_scroll": true` when it qualifies ([Insights](#insights)).
 
 ```json
 {
@@ -690,7 +693,7 @@ Takes the segment filters. Without `to`, the range ends now.
 
 | Field | Meaning |
 |---|---|
-| `totals` | Sessions that started in the range: sessions, page views, clicks, average duration, pages per session, bounce rate (the share of sessions with at most one page view, 0–1), and the sessions with at least one rage click, dead click and quick back |
+| `totals` | Sessions that started in the range: sessions, page views, clicks, average duration, pages per session, bounce rate (the share of sessions with at most one page view, 0–1), and the sessions with at least one rage click, dead click, quick back and excessive scrolling |
 | `previous` | The same numbers for the period of equal length just before `from`; `null` without `from` (all time) |
 | `series` | Sessions per UTC day, with days without sessions filled in as 0 |
 | `top_pages` | The five pages with the most page views by those sessions |
@@ -702,11 +705,11 @@ Takes the segment filters. Without `to`, the range ends now.
   "range": { "from": "2026-10-08T00:00:00.000Z", "to": "2026-10-15T00:00:00.000Z" },
   "totals": {
     "sessions": 37, "page_views": 90, "clicks": 132, "avg_duration_ms": 23678, "pages_per_session": 2.43, "bounce_rate": 0.4324,
-    "rage_sessions": 4, "dead_sessions": 7, "quick_back_sessions": 5
+    "rage_sessions": 4, "dead_sessions": 7, "quick_back_sessions": 5, "excessive_scroll_sessions": 2
   },
   "previous": {
     "sessions": 11, "page_views": 22, "clicks": 28, "avg_duration_ms": 22687, "pages_per_session": 2, "bounce_rate": 0.3636,
-    "rage_sessions": 1, "dead_sessions": 2, "quick_back_sessions": 1
+    "rage_sessions": 1, "dead_sessions": 2, "quick_back_sessions": 1, "excessive_scroll_sessions": 0
   },
   "series": [
     { "date": "2026-10-08", "sessions": 7 },
@@ -735,7 +738,7 @@ per day.
 The values that the sessions which started in the range actually have, with
 how many sessions have each, most common first (at most 100 per list). Takes
 `from` and `to` only, so choosing one filter doesn't empty the other menus.
-`insights` always lists all three insights, in a fixed order, including any
+`insights` always lists all four insights, in a fixed order, including any
 with 0 sessions.
 
 ```json
@@ -750,7 +753,7 @@ with 0 sessions.
   "entry_pages": [{ "value": "http://localhost:4000/demo", "sessions": 23 }],
   "exit_pages": [{ "value": "http://localhost:4000/demo/products.html", "sessions": 20 }],
   "pages": [{ "value": "http://localhost:4000/demo/products.html", "sessions": 31 }],
-  "insights": [{ "value": "rage", "sessions": 4 }, { "value": "dead", "sessions": 7 }, { "value": "quick_back", "sessions": 5 }]
+  "insights": [{ "value": "rage", "sessions": 4 }, { "value": "dead", "sessions": 7 }, { "value": "quick_back", "sessions": 5 }, { "value": "excessive_scroll", "sessions": 2 }]
 }
 ```
 
@@ -792,7 +795,7 @@ is rebuilt from a session's events every time a batch for it arrives:
 | `session_id` | Unique |
 | `first_seen`, `last_seen`, `duration_ms` | From the events' client timestamps, page exits included, so the time on the last page counts |
 | `event_count`, `page_views`, `clicks` | `event_count` is page views plus clicks; page exits only carry totals. `events_seen` counts every event and guards against a slower rebuild overwriting a newer one |
-| `rage_clicks`, `dead_clicks`, `quick_backs` | Counts of each [insight](#insights) |
+| `rage_clicks`, `dead_clicks`, `quick_backs`, `excessive_scrolls` | Counts of each [insight](#insights) |
 | `pages`, `entry_page`, `exit_page` | Normalized page URLs; `pages` in the order first visited |
 | `device`, `browser`, `os`, `country` | From the first event (country: the first event that has one). Browser and OS come from the user agent ([`lib/userAgent.js`](server/src/lib/userAgent.js)) |
 | `referrer` | The referring site's host without `www.`, only when it is another site |

@@ -35,6 +35,7 @@ describe('summarize', () => {
       rage_clicks: 0,
       dead_clicks: 0,
       quick_backs: 0,
+      excessive_scrolls: 0,
       pages: [HOME, PRODUCTS],
       entry_page: HOME,
       exit_page: HOME,
@@ -93,6 +94,15 @@ describe('rebuildSessions', () => {
     await Event.insertMany([eventDoc({ at: 0 })]);
     await rebuildSessions(['s_1']);
     expect(await stored('s_1')).toMatchObject({ event_count: 2, clicks: 1 });
+  });
+
+  it('replaces a summary stored before events_seen existed', async () => {
+    const old = summarize([eventDoc({ at: 0 })]);
+    delete old.events_seen;
+    await Session.collection.insertOne({ ...old, event_count: 99 }); // as written by an older server
+    await Event.insertMany([eventDoc({ at: 0 }), clickDoc({ at: 5 })]);
+    await rebuildSessions(['s_1']);
+    expect(await stored('s_1')).toMatchObject({ event_count: 2, events_seen: 2, clicks: 1 });
   });
 
   it('keeps the fuller summary when recomputes of one session race', async () => {

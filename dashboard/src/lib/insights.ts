@@ -2,14 +2,19 @@
 // per-event lists, and shares of sessions. Pure, so it's unit-tested.
 import type { OverviewTotals, SessionSummary, TrackedEvent } from './types';
 
-export type Insight = 'rage' | 'dead' | 'quick_back';
+export type Insight = 'rage' | 'dead' | 'quick_back' | 'excessive_scroll';
 
-export const INSIGHTS: readonly Insight[] = ['rage', 'dead', 'quick_back'];
+export const INSIGHTS: readonly Insight[] = ['rage', 'dead', 'quick_back', 'excessive_scroll'];
 
 export const INSIGHT_INFO: Record<Insight, { label: string; one: string; description: string }> = {
   rage: { label: 'Rage clicks', one: 'Rage click', description: '3 or more quick clicks on one spot' },
   dead: { label: 'Dead clicks', one: 'Dead click', description: 'Clicks the page didn’t react to within 1 s' },
   quick_back: { label: 'Quick backs', one: 'Quick back', description: 'Pages left again within 7 s' },
+  excessive_scroll: {
+    label: 'Excessive scrolling',
+    one: 'Excessive scrolling',
+    description: 'Scrolled up and down 3 page heights or more',
+  },
 };
 
 /** The overview total that counts sessions with each insight. */
@@ -17,6 +22,7 @@ const SESSIONS_FIELD = {
   rage: 'rage_sessions',
   dead: 'dead_sessions',
   quick_back: 'quick_back_sessions',
+  excessive_scroll: 'excessive_scroll_sessions',
 } as const satisfies Record<Insight, keyof OverviewTotals>;
 
 /** The session row's count of each insight. */
@@ -24,6 +30,7 @@ const COUNT_FIELD = {
   rage: 'rage_clicks',
   dead: 'dead_clicks',
   quick_back: 'quick_backs',
+  excessive_scroll: 'excessive_scrolls',
 } as const satisfies Record<Insight, keyof SessionSummary>;
 
 export const isInsight = (value: string): value is Insight => (INSIGHTS as readonly string[]).includes(value);
@@ -34,7 +41,7 @@ export function sessionInsights(session: Pick<SessionSummary, (typeof COUNT_FIEL
 }
 
 /** The insights one journey event is part of. */
-export function eventInsights(event: Pick<TrackedEvent, 'rage' | 'dead' | 'quick_back'>): Insight[] {
+export function eventInsights(event: Pick<TrackedEvent, 'rage' | 'dead' | 'quick_back' | 'excessive_scroll'>): Insight[] {
   return INSIGHTS.filter((insight) => event[insight] === true);
 }
 

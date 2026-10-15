@@ -60,6 +60,7 @@ export default function EventTimeline({
                 {clicks} {clicks === 1 ? 'click' : 'clicks'}
               </span>
               {engagement && <span className="text-xs text-ink-3">· {engagement}</span>}
+              {visit.exit?.excessive_scroll && <InsightChip insight="excessive_scroll" />}
               <Link
                 href={heatmapHref(first)}
                 scroll={false}

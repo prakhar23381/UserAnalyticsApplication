@@ -1,4 +1,4 @@
-import { Angry, type LucideIcon, MousePointerBan, Undo2 } from 'lucide-react';
+import { Angry, ArrowDownUp, type LucideIcon, MousePointerBan, Undo2 } from 'lucide-react';
 import { type Insight, INSIGHT_INFO } from '@/lib/insights';
 
 // A Record, so a new insight doesn't compile until it has an icon and colours.
@@ -6,13 +6,20 @@ export const INSIGHT_STYLE: Record<Insight, { icon: LucideIcon; className: strin
   rage: { icon: Angry, className: 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300' },
   dead: { icon: MousePointerBan, className: 'bg-slate-200 text-slate-800 dark:bg-slate-500/20 dark:text-slate-300' },
   quick_back: { icon: Undo2, className: 'bg-violet-100 text-violet-800 dark:bg-violet-500/15 dark:text-violet-300' },
+  excessive_scroll: { icon: ArrowDownUp, className: 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300' },
 };
 
 /** An insight as a small chip: icon and words, never colour alone. With `count`, "3 dead clicks". */
 export default function InsightChip({ insight, count }: { insight: Insight; count?: number }) {
   const { icon: Icon, className } = INSIGHT_STYLE[insight];
   const { label, one, description } = INSIGHT_INFO[insight];
-  const text = count === undefined ? one : `${count} ${(count === 1 ? one : label).toLowerCase()}`;
+  // "Excessive scrolling" counts page views: "2 pages scrolled excessively" reads better than "2 excessive scrolling".
+  const text =
+    count === undefined
+      ? one
+      : insight === 'excessive_scroll'
+        ? `${count} ${count === 1 ? 'page' : 'pages'} scrolled excessively`
+        : `${count} ${(count === 1 ? one : label).toLowerCase()}`;
   return (
     <span
       title={description}

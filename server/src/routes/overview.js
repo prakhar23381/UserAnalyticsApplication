@@ -26,6 +26,7 @@ const TOTALS = [
       rage_sessions: { $sum: { $cond: [{ $gt: ['$rage_clicks', 0] }, 1, 0] } },
       dead_sessions: { $sum: { $cond: [{ $gt: ['$dead_clicks', 0] }, 1, 0] } },
       quick_back_sessions: { $sum: { $cond: [{ $gt: ['$quick_backs', 0] }, 1, 0] } },
+      excessive_scroll_sessions: { $sum: { $cond: [{ $gt: ['$excessive_scrolls', 0] }, 1, 0] } },
     },
   },
 ];
@@ -42,6 +43,7 @@ function shapeTotals(row) {
       rage_sessions: 0,
       dead_sessions: 0,
       quick_back_sessions: 0,
+      excessive_scroll_sessions: 0,
     };
   }
   return {
@@ -55,6 +57,7 @@ function shapeTotals(row) {
     rage_sessions: row.rage_sessions,
     dead_sessions: row.dead_sessions,
     quick_back_sessions: row.quick_back_sessions,
+    excessive_scroll_sessions: row.excessive_scroll_sessions,
   };
 }
 

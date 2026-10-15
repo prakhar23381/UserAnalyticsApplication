@@ -181,11 +181,11 @@ describe('toDocuments', () => {
     expect(sessions.every((s) => s.browser !== 'Other' && s.os !== 'Other')).toBe(true);
   });
 
-  it('has rage clicks, dead clicks and quick backs, as the insights need', async () => {
+  it('has rage clicks, dead clicks, quick backs and excessive scrolling, as the insights need', async () => {
     await seed(documents);
     const sessions = await Session.find().lean();
     const share = (field) => sessions.filter((s) => s[field] > 0).length / sessions.length;
-    for (const field of ['rage_clicks', 'dead_clicks', 'quick_backs']) {
+    for (const field of ['rage_clicks', 'dead_clicks', 'quick_backs', 'excessive_scrolls']) {
       expect(share(field), field).toBeGreaterThan(0.02);
       expect(share(field), field).toBeLessThan(0.3);
     }

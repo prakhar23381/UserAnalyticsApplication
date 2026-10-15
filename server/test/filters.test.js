@@ -56,7 +56,7 @@ describe('parseFilters', () => {
     [{ min_clicks: '-1' }, 'min_clicks must be a whole number'],
     [{ max_duration: '1.5' }, 'max_duration must be a whole number'],
     [{ min_pages: '5', max_pages: '2' }, 'min_pages must not be more than max_pages'],
-    [{ insights: 'rage,bored' }, 'insights must be a comma-separated list of: rage, dead, quick_back'],
+    [{ insights: 'rage,bored' }, 'insights must be a comma-separated list of: rage, dead, quick_back, excessive_scroll'],
   ])('rejects %j', (query, error) => {
     expect(parseFilters(query)).toEqual({ ok: false, error });
   });

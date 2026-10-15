@@ -45,6 +45,7 @@ router.get('/filters', async (req, res) => {
               rage: { $sum: { $cond: [{ $gt: ['$rage_clicks', 0] }, 1, 0] } },
               dead: { $sum: { $cond: [{ $gt: ['$dead_clicks', 0] }, 1, 0] } },
               quick_back: { $sum: { $cond: [{ $gt: ['$quick_backs', 0] }, 1, 0] } },
+              excessive_scroll: { $sum: { $cond: [{ $gt: ['$excessive_scrolls', 0] }, 1, 0] } },
             },
           },
         ],

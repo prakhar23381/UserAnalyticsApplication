@@ -16,7 +16,7 @@ import { BROWSER_NAMES, OS_NAMES } from './userAgent.js';
 //   visited_page                one page URL each, normalized like page_url
 //   min_/max_duration (seconds), min_/max_pages (page views), min_/max_clicks
 //                               whole numbers, inclusive
-//   insights                    comma-separated: rage, dead, quick_back; a session needs all of them
+//   insights                    comma-separated: rage, dead, quick_back, excessive_scroll; a session needs all of them
 //
 // A segment is a set of sessions: list views read the sessions collection, and
 // event views (heatmap, pages) count the events of the matching sessions.
@@ -53,7 +53,7 @@ const NUMBERS = [
   ['min_clicks', 'max_clicks', 'clicks', 1],
 ];
 // Each insight's count on the session document (lib/insights.js).
-const INSIGHT_FIELDS = { rage: 'rage_clicks', dead: 'dead_clicks', quick_back: 'quick_backs' };
+const INSIGHT_FIELDS = { rage: 'rage_clicks', dead: 'dead_clicks', quick_back: 'quick_backs', excessive_scroll: 'excessive_scrolls' };
 
 /** Every query parameter the segment reads. */
 export const SEGMENT_PARAMS = [

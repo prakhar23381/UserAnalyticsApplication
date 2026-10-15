@@ -77,7 +77,36 @@ describe('quick backs', () => {
   });
 });
 
+describe('excessive scrolling', () => {
+  // A 2400 px page in a 900 px window (factories' defaults).
+  const exit = (pv_id, at, scroll_distance, overrides = {}) =>
+    eventDoc({ type: 'page_exit', pv_id, at, scroll_depth: 2400, scroll_distance, active_ms: 1000, bands: [], ...overrides });
+
+  it("judges each page view on its latest summary: 3 page heights or more", () => {
+    const events = [
+      eventDoc({ at: 0, pv_id: 'a' }),
+      exit('a', 5, 7300), // hidden once, early
+      exit('a', 9, 7100), // the latest total (a lower one can't happen, but the latest still wins)
+      eventDoc({ at: 10, pv_id: 'b', page_url: PRODUCTS }),
+      exit('b', 20, 7200, { page_url: PRODUCTS }), // exactly 3 × 2400
+    ];
+    const found = findInsights(events);
+    expect(found.counts.excessive_scrolls).toBe(1);
+    expect([...found.excessiveScrolls]).toEqual([events[4]]);
+  });
+
+  it('ignores pages no taller than two windows, and summaries without a page view id', () => {
+    expect(counts([exit('a', 1, 9000, { doc_h: 1800 })]).excessive_scrolls).toBe(0); // 1800 = 2 × 900
+    expect(counts([exit(undefined, 1, 9000)]).excessive_scrolls).toBe(0);
+  });
+
+  it("doesn't let a summary break a rage burst", () => {
+    const events = [clickDoc({ at: 0 }), clickDoc({ at: 0.3 }), exit('a', 0.4, 0), clickDoc({ at: 0.6 })];
+    expect(counts(events).rage_clicks).toBe(1);
+  });
+});
+
 it('finds nothing in an ordinary session', () => {
   const events = [eventDoc({ at: 0 }), clickDoc({ at: 5 }), eventDoc({ at: 6, page_url: PRODUCTS }), clickDoc({ at: 30, page_url: PRODUCTS })];
-  expect(counts(events)).toEqual({ rage_clicks: 0, dead_clicks: 0, quick_backs: 0 });
+  expect(counts(events)).toEqual({ rage_clicks: 0, dead_clicks: 0, quick_backs: 0, excessive_scrolls: 0 });
 });

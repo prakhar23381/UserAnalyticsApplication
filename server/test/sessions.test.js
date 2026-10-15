@@ -30,6 +30,7 @@ describe('GET /api/sessions', () => {
           rage_clicks: 0,
           dead_clicks: 0,
           quick_backs: 0,
+          excessive_scrolls: 0,
           first_seen: iso(0),
           last_seen: iso(31),
           duration_ms: 31_000,

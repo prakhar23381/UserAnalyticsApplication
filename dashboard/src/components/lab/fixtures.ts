@@ -57,8 +57,8 @@ export const LAB_RANKING = [
 // Two weeks of sample traffic for the Overview, with a previous period to compare.
 export const LAB_OVERVIEW: OverviewResponse = {
   range: { from: '2026-10-01T00:00:00.000Z', to: '2026-10-15T00:00:00.000Z' },
-  totals: { sessions: 1284, page_views: 3410, clicks: 5120, avg_duration_ms: 94_000, pages_per_session: 2.66, bounce_rate: 0.381, rage_sessions: 96, dead_sessions: 231, quick_back_sessions: 142 },
-  previous: { sessions: 1102, page_views: 3020, clicks: 5310, avg_duration_ms: 88_000, pages_per_session: 2.74, bounce_rate: 0.402, rage_sessions: 71, dead_sessions: 240, quick_back_sessions: 118 },
+  totals: { sessions: 1284, page_views: 3410, clicks: 5120, avg_duration_ms: 94_000, pages_per_session: 2.66, bounce_rate: 0.381, rage_sessions: 96, dead_sessions: 231, quick_back_sessions: 142, excessive_scroll_sessions: 64 },
+  previous: { sessions: 1102, page_views: 3020, clicks: 5310, avg_duration_ms: 88_000, pages_per_session: 2.74, bounce_rate: 0.402, rage_sessions: 71, dead_sessions: 240, quick_back_sessions: 118, excessive_scroll_sessions: 59 },
   series: [62, 71, 80, 77, 95, 104, 88, 79, 92, 101, 110, 96, 113, 116].map((sessions, i) => ({
     date: `2026-10-${String(i + 1).padStart(2, '0')}`,
     sessions,

@@ -30,6 +30,7 @@ export const SESSION_FIELDS = {
   rage_clicks: { $ifNull: ['$rage_clicks', 0] },
   dead_clicks: { $ifNull: ['$dead_clicks', 0] },
   quick_backs: { $ifNull: ['$quick_backs', 0] },
+  excessive_scrolls: { $ifNull: ['$excessive_scrolls', 0] },
   first_seen: 1,
   last_seen: 1,
   duration_ms: 1,
@@ -87,11 +88,12 @@ router.get('/sessions/:id/events', async (req, res) => {
     return res.status(404).json({ error: 'Session not found' });
   }
   // Clicks in a rage burst get rage: true; a page left again within 7 s gets quick_back: true.
-  const { rage, quickBacks } = findInsights(events);
+  const { rage, quickBacks, excessiveScrolls } = findInsights(events);
   const marked = events.map((event) => ({
     ...event,
     ...(rage.has(event) && { rage: true }),
     ...(quickBacks.has(event) && { quick_back: true }),
+    ...(excessiveScrolls.has(event) && { excessive_scroll: true }), // on the page view's latest exit
   }));
   // session: the same summary as a row of GET /api/sessions (null until it's built).
   res.json({ session_id: id, session, events: marked });

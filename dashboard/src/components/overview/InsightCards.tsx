@@ -23,7 +23,7 @@ export default function InsightCards({
   sessionsHref: (insight: Insight) => string;
 }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {INSIGHTS.map((insight) => {
         const { icon: Icon, className } = INSIGHT_STYLE[insight];
         const { label, description } = INSIGHT_INFO[insight];

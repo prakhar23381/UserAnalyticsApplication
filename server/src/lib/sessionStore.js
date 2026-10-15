@@ -11,7 +11,7 @@ import { parseUserAgent } from './userAgent.js';
 const MAX_PAGES = 200;
 const MAX_UTM_LENGTH = 100;
 const REBUILD_CHUNK = 500;
-const FIELDS = { _id: 0, session_id: 1, type: 1, page_url: 1, raw_url: 1, timestamp: 1, device: 1, referrer: 1, user_agent: 1, country: 1, x: 1, y: 1, dead: 1 };
+const FIELDS = { _id: 0, session_id: 1, type: 1, page_url: 1, raw_url: 1, timestamp: 1, device: 1, referrer: 1, user_agent: 1, country: 1, x: 1, y: 1, dead: 1, pv_id: 1, scroll_distance: 1, doc_h: 1, viewport_h: 1 };
 
 const hostOf = (url) => {
   try {
@@ -79,7 +79,12 @@ export function summarize(events) {
 async function save(doc) {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      await Session.replaceOne({ session_id: doc.session_id, events_seen: { $lte: doc.events_seen } }, doc, { upsert: true });
+      // A summary from before events_seen existed (v2 M5) is older by definition.
+      await Session.replaceOne(
+        { session_id: doc.session_id, $or: [{ events_seen: { $lte: doc.events_seen } }, { events_seen: { $exists: false } }] },
+        doc,
+        { upsert: true },
+      );
       return;
     } catch (err) {
       // Duplicate key: a newer summary is stored (the filter missed, so the upsert

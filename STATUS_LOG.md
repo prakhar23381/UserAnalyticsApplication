@@ -2,6 +2,30 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-15 — v2 M5: engagement — page exits, scroll and attention maps, excessive scrolling (branch `v2`)
+Plan and decisions M5-D1–D6 in `docs/v2-plan.md` ("M5 in detail"). Three local commits.
+- **M5a (`0fc9cfd`):** tracker `pv_id` on every event; on hide or leave, a **`page_exit`** with
+  the view's running totals (`scroll_depth`, `scroll_distance`, `active_ms` = visible with input
+  ≤ 15 s ago, `bands` = active ms per 50 px band on screen, ≤ 400); keeps the view's session and
+  never renews it; one summary per change (pagehide + hidden send one). Server: new event type
+  (enum, `validateEvent`, `EventBadge`, README, CLAUDE.md §4); `event_count` = page views +
+  clicks, `duration_ms`/`last_seen` include exits; `events_seen` guards rebuilds. Journey: exits
+  attach to their visit's header ("Active 12s · scrolled 76%"). Brave check: one exit per view,
+  text/plain 202, no console errors (`scratch/exit-check.mjs`).
+- **M5b (`a683c2b`):** `GET /api/engagement` (latest summary per page view, newest 2000;
+  `$top`); `lib/engagement.ts` (reach and attention per 50 px row, depths mapped like clicks,
+  fold, half-reach, averages; tested); Heatmaps **Map** switch Clicks / Scroll / Attention,
+  rows with hover titles, fold and half lines, Engagement panel. Seed: a `page_exit` per page
+  view (`exitSummary`, tested). Found and fixed: the local `node --watch` API had died on a
+  half-written edit (restarted by touching `src/index.js`).
+- **M5c:** **excessive scrolling** insight (latest summary ≥ 3 page heights scrolled, page > 2
+  windows): session `excessive_scrolls`, filter, overview totals, filter-menu counts, journey
+  flag on the exit; dashboard card (4 per row on xl), chip ("2 pages scrolled excessively"),
+  visit-header chip. Seed: ≈ 5% of sessions. Fixed: summaries stored before `events_seen` could
+  never be replaced (the guard's filter missed them); now a missing `events_seen` counts as
+  older (test). Local `causalfunnel` sessions rebuilt (51).
+- Server tests 300, dashboard 138; build, lint, typecheck clean.
+
 ## 2026-10-15 — v2 M4: heatmaps v2 (branch `v2`)
 Plan and decisions M4-D1–D5 in `docs/v2-plan.md` ("M4 in detail"). Display stays Dots / Grid
 and gains **Heat** (the spec names dots and grid, so both stay). Three local commits.

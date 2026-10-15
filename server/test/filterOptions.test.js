@@ -48,6 +48,7 @@ describe('GET /api/filters', () => {
         { value: 'rage', sessions: 0 },
         { value: 'dead', sessions: 0 },
         { value: 'quick_back', sessions: 0 },
+        { value: 'excessive_scroll', sessions: 0 },
       ],
     });
   });

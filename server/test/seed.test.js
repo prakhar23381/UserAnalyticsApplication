@@ -4,6 +4,7 @@ import { Window } from 'happy-dom';
 import { describe, expect, it } from 'vitest';
 import {
   ELEMENTS,
+  exitSummary,
   LAYOUT,
   PAGES,
   SEED_PREFIX,
@@ -101,6 +102,21 @@ describe('generateSessions', () => {
     }
   });
 
+  it('closes every page view with one page_exit of the same pv_id, before the next page view', () => {
+    for (const session of sessions) {
+      const views = session.events.filter((e) => e.type === 'page_view');
+      const exits = session.events.filter((e) => e.type === 'page_exit');
+      expect(exits.map((e) => e.pv_id)).toEqual(views.map((e) => e.pv_id));
+      expect(new Set(views.map((e) => e.pv_id)).size).toBe(views.length);
+      session.events.forEach((event, i) => {
+        if (event.type !== 'page_exit') return;
+        const later = session.events.slice(i + 1);
+        expect(later.every((e) => e.pv_id !== event.pv_id), 'nothing of a view after its exit').toBe(true);
+        expect(event.scroll_depth).toBeGreaterThanOrEqual(event.viewport_h);
+      });
+    }
+  });
+
   it('gives each click its element box from LAYOUT', () => {
     for (const click of clicks) {
       const [x, y, w, h] = LAYOUT[deviceFor(click.viewport_w)].box[elementOf(click)];
@@ -115,7 +131,7 @@ describe('generateSessions', () => {
         const opens = event.type === 'click' && ELEMENTS[elementOf(event)].opens;
         if (!opens) return;
         links++;
-        const next = session.events[i + 1];
+        const next = session.events.slice(i + 1).find((e) => e.type !== 'page_exit'); // its page's exit comes first
         expect(next.type).toBe('page_view');
         expect(normalizeUrl(next.page_url)).toBe(normalizeUrl(new URL(PAGES[opens], BASE).href));
         expect(next.referrer).toBe(event.page_url);
@@ -274,5 +290,21 @@ describe('ELEMENTS selectors', () => {
     // Sorted: clicks on form fields skip the dead-click hold, so they are queued first.
     expect(recorded.map((click) => click.target.selector).sort()).toEqual(names.map((name) => ELEMENTS[name].target.selector).sort());
     await win.happyDOM.close();
+  });
+});
+
+describe('exitSummary', () => {
+  it('spreads active time over the bands a steady scroll shows', () => {
+    // 4 s from the top of a 1600 px page down to its end, in an 800 px window.
+    const summary = exitSummary({ start: 0, end: 4000, depth: 1600, viewport_h: 800, doc_h: 1600 });
+    expect(summary).toMatchObject({ scroll_depth: 1600, scroll_distance: 800, active_ms: 4000 });
+    expect(summary.bands).toHaveLength(32);
+    expect(summary.bands[0]).toBeGreaterThan(summary.bands[31] / 2); // the top was on screen from the start
+    expect(Math.max(...summary.bands)).toBeLessThanOrEqual(4000);
+  });
+
+  it('never claims more depth than the page, nor less than the window', () => {
+    expect(exitSummary({ start: 0, end: 1000, depth: 5000, viewport_h: 800, doc_h: 1200 }).scroll_depth).toBe(1200);
+    expect(exitSummary({ start: 0, end: 1000, depth: 100, viewport_h: 800, doc_h: 1200 }).scroll_depth).toBe(800);
   });
 });

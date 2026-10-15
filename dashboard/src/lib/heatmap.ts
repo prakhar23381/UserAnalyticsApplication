@@ -30,7 +30,10 @@ export interface Cell {
 
 // The tracker records doc_h as scrollHeight, which is the window's height when
 // the page is shorter than the window. Only a taller page says how tall it is.
-const tallerThanWindow = (click: HeatmapClick) => click.doc_h > click.viewport_h;
+/** The sizes a click or a page-view summary was recorded at. */
+export type PageSize = Pick<HeatmapClick, 'viewport_w' | 'viewport_h' | 'doc_h'>;
+
+const tallerThanWindow = (size: PageSize) => size.doc_h > size.viewport_h;
 
 /**
  * The page's height at the reference width, from clicks recorded in a window
@@ -38,7 +41,7 @@ const tallerThanWindow = (click: HeatmapClick) => click.doc_h > click.viewport_h
  * desktop, and when no click qualifies. A page no taller than its window
  * reports the window's height, so those clicks don't count.
  */
-export function referenceHeight(clicks: HeatmapClick[], device: Device): number | null {
+export function referenceHeight(clicks: PageSize[], device: Device): number | null {
   if (device === 'desktop') return null;
   const counts = new Map<number, number>();
   for (const click of clicks) {
@@ -57,7 +60,7 @@ export function referenceHeight(clicks: HeatmapClick[], device: Device): number 
 }
 
 // refHeight / doc_h for a click on a page taller than its window, else 1
-function heightRatio(click: HeatmapClick, refHeight: number | null): number {
+export function heightRatio(click: PageSize, refHeight: number | null): number {
   return refHeight !== null && tallerThanWindow(click) ? refHeight / click.doc_h : 1;
 }
 

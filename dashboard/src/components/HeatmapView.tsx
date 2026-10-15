@@ -1,11 +1,12 @@
 'use client';
 
-import { ChevronsRight, CircleDot, Eye, EyeOff, Flame, Grid3x3, SquareDashedMousePointer, X } from 'lucide-react';
+import { ArrowDownToLine, ChevronsRight, CircleDot, Eye, EyeOff, Flame, Grid3x3, MousePointerClick, SquareDashedMousePointer, Timer, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { DEVICE_META } from '@/components/DeviceLabel';
 import ElementsSidebar from '@/components/ElementsSidebar';
+import EngagementMaps from '@/components/EngagementMaps';
 import Heatmap, { type HeatmapMode } from '@/components/Heatmap';
 import PageHeading from '@/components/PageHeading';
 import PageSelector from '@/components/PageSelector';
@@ -28,6 +29,13 @@ const MODES: ToggleOption<HeatmapMode>[] = [
   { value: 'dots', label: 'Dots', icon: CircleDot },
   { value: 'grid', label: 'Grid', icon: Grid3x3 },
   { value: 'heat', label: 'Heat', icon: Flame },
+];
+
+type MapKind = 'clicks' | 'scroll' | 'attention';
+const MAPS: ToggleOption<MapKind>[] = [
+  { value: 'clicks', label: 'Clicks', icon: MousePointerClick },
+  { value: 'scroll', label: 'Scroll', icon: ArrowDownToLine },
+  { value: 'attention', label: 'Attention', icon: Timer },
 ];
 
 const parseDevice = (value: string | null): Device =>
@@ -93,6 +101,8 @@ export default function HeatmapView() {
   const params = useSearchParams();
   const hrefFor = useDashboardHref();
   const device = parseDevice(params.get('device'));
+  const mapParam = params.get('map');
+  const mapKind: MapKind = mapParam === 'scroll' || mapParam === 'attention' ? mapParam : 'clicks';
   const modeParam = params.get('mode');
   const mode: HeatmapMode = modeParam === 'grid' || modeParam === 'heat' ? modeParam : 'dots';
   // The element heatmap: one ranked element's clicks alone.
@@ -120,10 +130,11 @@ export default function HeatmapView() {
   }, [defaultPage, params, router, hrefFor]);
   // keepPreviousData: the old picture stays until the new one arrives. The
   // stage draws from the response's own page_url, so page and clicks always match.
-  const heatmap = useApi<HeatmapResponse>(page && !deviceFiltered ? heatmapUrl(page, device, apiFilters) : null, {
+  const clicksShown = mapKind === 'clicks' && page && !deviceFiltered;
+  const heatmap = useApi<HeatmapResponse>(clicksShown ? heatmapUrl(page, device, apiFilters) : null, {
     keepPreviousData: true,
   });
-  const elements = useApi<ElementsResponse>(page && !deviceFiltered ? elementsUrl(page, device, apiFilters) : null, {
+  const elements = useApi<ElementsResponse>(clicksShown ? elementsUrl(page, device, apiFilters) : null, {
     keepPreviousData: true,
   });
   const layout = useMemo(
@@ -281,25 +292,37 @@ export default function HeatmapView() {
           value={device}
           hrefFor={(value) => hrefFor({ device: value === 'desktop' ? null : value, element: null, area: null })}
         />
-        <ToggleGroup label="Show" options={MODES} value={mode} hrefFor={(value) => hrefFor({ mode: value === 'dots' ? null : value })} />
-        <div className="flex flex-col gap-1.5 text-sm">
-          <span className="text-xs font-medium text-ink-3">Tools</span>
-          <button
-            type="button"
-            aria-pressed={drawing}
-            onClick={() => setDrawing(!drawing)}
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm font-medium ${
-              drawing ? 'border-accent bg-accent text-white' : 'border-line text-ink-2 hover:bg-surface-2 hover:text-ink'
-            }`}
-          >
-            <SquareDashedMousePointer className="size-4" aria-hidden="true" />
-            {drawing ? 'Drag on the page…' : 'Select area'}
-          </button>
-        </div>
+        <ToggleGroup
+          label="Map"
+          options={MAPS}
+          value={mapKind}
+          hrefFor={(value) => hrefFor({ map: value === 'clicks' ? null : value, element: null, area: null })}
+        />
+        {mapKind === 'clicks' && (
+          <ToggleGroup label="Show" options={MODES} value={mode} hrefFor={(value) => hrefFor({ mode: value === 'dots' ? null : value })} />
+        )}
+        {mapKind === 'clicks' && (
+          <div className="flex flex-col gap-1.5 text-sm">
+            <span className="text-xs font-medium text-ink-3">Tools</span>
+            <button
+              type="button"
+              aria-pressed={drawing}
+              onClick={() => setDrawing(!drawing)}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm font-medium ${
+                drawing ? 'border-accent bg-accent text-white' : 'border-line text-ink-2 hover:bg-surface-2 hover:text-ink'
+              }`}
+            >
+              <SquareDashedMousePointer className="size-4" aria-hidden="true" />
+              {drawing ? 'Drag on the page…' : 'Select area'}
+            </button>
+          </div>
+        )}
         <WatchPageButton pageUrl={data?.page_url ?? page} />
       </div>
       {deviceFiltered ? (
         stage
+      ) : mapKind !== 'clicks' ? (
+        <EngagementMaps page={page} device={device} kind={mapKind} />
       ) : (
         // One column under lg, with the ranking after the page; beside it from lg.
         <div className={sidebarOpen ? 'grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]' : ''}>

@@ -52,6 +52,10 @@ export const heatmapUrl = (page: string, device: Device, filters: ApiFilterParam
 export const elementsUrl = (page: string, device: Device, filters: ApiFilterParams = {}) =>
   `${API_URL}/api/elements?${new URLSearchParams({ page, device })}${apiFilterQuery(filters)}`;
 
+// Page-view summaries for the scroll and attention maps, like the heatmap's request.
+export const engagementUrl = (page: string, device: Device, filters: ApiFilterParams = {}) =>
+  `${API_URL}/api/engagement?${new URLSearchParams({ page, device })}${apiFilterQuery(filters)}`;
+
 export const overviewUrl = (filters: ApiFilterParams = {}) =>
   `${API_URL}/api/overview${apiFilterQuery(filters).replace(/^&/, '?')}`;
 

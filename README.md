@@ -69,7 +69,11 @@ badge on the page. Each element can be shown alone (its clicks only, its box
 outlined), and its selector copied; **CSV** downloads the ranking. **Select
 area** lets you drag a rectangle over the page to count the clicks inside it
 (kept in the URL, so the view can be shared). The footer gives page views and
-clicks.
+clicks. The **Map** switch adds two views built from page-view summaries: **Scroll**
+colours each 50 px row by the share of visits that saw it (with the average fold
+and the depth half the visitors reached), and **Attention** by the average active
+time it spent on screen; a panel gives visits summarised, average active time and
+how much of the page was seen.
 
 ![Click heatmap](docs/images/heatmap.png)
 
@@ -441,6 +445,7 @@ the same as in the database.
 | `GET` | `/api/pages` | Every tracked page, for the heatmap's page picker |
 | `GET` | `/api/heatmap` | Click positions on one page |
 | `GET` | `/api/elements` | One page's elements ranked by clicks |
+| `GET` | `/api/engagement` | One page's page-view summaries, for the scroll and attention maps |
 | `GET` | `/api/overview` | Headline numbers, sessions per day, top pages, and the split by device, browser, country and source for a segment |
 | `GET` | `/api/filters` | The values the filter menus offer, with session counts |
 
@@ -655,6 +660,30 @@ MongoDB 5.2 or later.
 }
 ```
 
+### `GET /api/engagement`
+
+Takes the same parameters as `GET /api/heatmap`. The latest `page_exit` of
+each page view on the page (its running totals), newest first, at most 2000.
+`page_views` is the uncapped count of page views with a summary. The
+dashboard maps depths and bands to the reference layout the way it places
+clicks, and averages them per 50 px row.
+
+```json
+{
+  "page_url": "http://localhost:4000/demo/products.html",
+  "device": "desktop",
+  "page_views": 2,
+  "views": [
+    {
+      "scroll_depth": 1144, "scroll_distance": 688, "active_ms": 7738, "bands": [4210, 4210, 7738],
+      "viewport_w": 1280, "viewport_h": 800, "doc_w": 1280, "doc_h": 1144, "device": "desktop"
+    }
+  ]
+}
+```
+
+(`bands` shortened.)
+
 ### `GET /api/overview`
 
 Takes the segment filters. Without `to`, the range ends now.
@@ -752,7 +781,7 @@ collection summarizes them, one document per session, for the filters.
 | Index | Used by |
 |---|---|
 | `{ session_id: 1, timestamp: 1 }` | Rebuilding a session's summary, a session's journey, the events of a segment's sessions (top pages), and the seed script's `--reset` (an anchored `^seed_` prefix match) |
-| `{ page_url: 1, type: 1, device: 1 }` | The heatmap query and its count, the element ranking, and the pages list |
+| `{ page_url: 1, type: 1, device: 1 }` | The heatmap query and its count, the element ranking, the page-view summaries, and the pages list |
 | `{ timestamp: -1 }` | No current endpoint. It is there for time-range queries, such as recent activity or a retention job |
 
 `sessions` ([`server/src/models/Session.js`](server/src/models/Session.js))

@@ -11,6 +11,7 @@ import {
   GRID_CELL,
   HEAT_RADIUS,
   heatAlpha,
+  heatColor,
   heatPalette,
   type Point,
   previewUrl,
@@ -32,6 +33,10 @@ interface Props {
   area?: Area | null;
   /** When set, dragging on the page draws a new area and hands it over. */
   onArea?: (area: Area) => void;
+  /** Scroll or attention map: one value (0–1, cold to hot) per row of `rowPx`, each with a hover title. */
+  rows?: { values: number[]; titles: string[]; rowPx: number };
+  /** Labelled horizontal lines (the fold, where half the visitors stopped). */
+  lines?: { y: number; label: string }[];
 }
 
 /**
@@ -81,7 +86,18 @@ function HeatLayer({ width, height, points }: { width: number; height: number; p
  * to fit the container. The iframe is sandboxed (no scripts, no navigation)
  * and ignores the pointer; it is only a picture of the page.
  */
-export default function Heatmap({ pageUrl, layout, mode, marks = [], highlight = null, focus = null, area = null, onArea }: Props) {
+export default function Heatmap({
+  pageUrl,
+  layout,
+  mode,
+  marks = [],
+  highlight = null,
+  focus = null,
+  area = null,
+  onArea,
+  rows,
+  lines = [],
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   // The area being dragged: its first corner and the pointer, in reference px.
@@ -151,7 +167,7 @@ export default function Heatmap({ pageUrl, layout, mode, marks = [], highlight =
                 className="pointer-events-none absolute inset-0 border-0 bg-white"
               />
             )}
-            {mode === 'heat' && <HeatLayer width={width} height={height} points={points} />}
+            {mode === 'heat' && !rows && <HeatLayer width={width} height={height} points={points} />}
             <svg
               viewBox={`0 0 ${width} ${height}`}
               width={width}
@@ -162,7 +178,46 @@ export default function Heatmap({ pageUrl, layout, mode, marks = [], highlight =
               role="img"
               aria-label={`${points.length} clicks${marks.length > 0 ? `; the top ${marks.length} elements are numbered` : ''}`}
             >
-              {mode === 'grid' &&
+              {rows?.values.map((value, row) => {
+                const [r, g, b] = heatColor(value);
+                return (
+                  <rect
+                    key={row}
+                    x={0}
+                    y={row * rows.rowPx}
+                    width={width}
+                    height={rows.rowPx}
+                    fill={value > 0 ? `rgb(${r} ${g} ${b})` : 'transparent'}
+                    fillOpacity={0.5}
+                    shapeRendering="crispEdges" // no hairline seams between rows when scaled
+                  >
+                    <title>{rows.titles[row]}</title>
+                  </rect>
+                );
+              })}
+              {lines.map((line) => (
+                <g key={line.label}>
+                  <line
+                    x1={0}
+                    x2={width}
+                    y1={line.y}
+                    y2={line.y}
+                    className="stroke-slate-900"
+                    strokeWidth={2 / scale}
+                    strokeDasharray={`${8 / scale} ${4 / scale}`}
+                  />
+                  <text
+                    x={width - 8 / scale}
+                    y={line.y - 6 / scale}
+                    textAnchor="end"
+                    className="fill-slate-900 font-semibold"
+                    style={{ fontSize: 13 / scale, paintOrder: 'stroke', stroke: 'white', strokeWidth: 4 / scale }}
+                  >
+                    {line.label}
+                  </text>
+                </g>
+              ))}
+              {!rows && mode === 'grid' &&
                 grid?.cells.map((cell) => (
                   <rect
                     key={`${cell.x}:${cell.y}`}
@@ -176,7 +231,7 @@ export default function Heatmap({ pageUrl, layout, mode, marks = [], highlight =
                     <title>{`${cell.count} ${cell.count === 1 ? 'click' : 'clicks'}`}</title>
                   </rect>
                 ))}
-              {mode === 'dots' &&
+              {!rows && mode === 'dots' &&
                 points.map((point, i) => (
                   <circle
                     key={i}

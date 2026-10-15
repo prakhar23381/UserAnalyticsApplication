@@ -26,6 +26,10 @@ const DAY = 24 * 60 * MINUTE;
 const MAX_PAGES_PER_SESSION = 6;
 const RAGE_SHARE = 0.4; // of photo clicks: the visitor keeps clicking the photo
 const QUICK_BACK_SHARE = 0.12; // of link clicks: the visitor comes straight back
+const TO_THE_BOTTOM_SHARE = 0.35; // of page views: the visitor scrolls to the end of the page
+const EXCESSIVE_SCROLL_SHARE = 0.06; // of page views on tall pages: scrolling up and down, hunting
+const BAND_PX = 50;
+const MAX_BANDS = 400;
 const ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
 export const PAGES = { home: '/demo/', products: '/demo/products.html', about: '/demo/about.html' };
@@ -273,6 +277,38 @@ function pointNear(random, { x, y }, [left, top, width, height]) {
   return { x: clamp(x + jitter(), left, left + width), y: clamp(y + jitter(), top, top + height) };
 }
 
+/**
+ * A page view's end-of-visit summary as tracker.js sends it (a page_exit's
+ * fields), for a visitor who scrolls steadily from the top down to `depth`
+ * (the deepest point seen) over the visit and is active the whole time.
+ * `extraDistance` adds scrolling up and down on the way.
+ */
+export function exitSummary({ start, end, depth, viewport_h, doc_h, extraDistance = 0 }) {
+  const active = Math.max(0, Math.round(end - start));
+  const deepest = Math.min(Math.max(depth, viewport_h), Math.max(doc_h, viewport_h));
+  const maxTop = deepest - viewport_h;
+  const bands = [];
+  for (let t = 0; t < active; t += 250) {
+    const ms = Math.min(250, active - t);
+    const top = active > 250 ? Math.min(maxTop, (maxTop * t) / (active - 250)) : maxTop; // top first, deepest last
+    const last = Math.min(MAX_BANDS - 1, Math.floor((top + viewport_h - 1) / BAND_PX));
+    for (let band = Math.floor(top / BAND_PX); band <= last; band++) bands[band] = (bands[band] ?? 0) + ms;
+  }
+  return {
+    scroll_depth: Math.round(deepest),
+    scroll_distance: Math.round(maxTop + extraDistance),
+    active_ms: active,
+    bands: Array.from({ length: bands.length }, (_, i) => Math.round(bands[i] ?? 0)),
+  };
+}
+
+/** How deep a visitor got on a page: past their lowest click, sometimes to the end. */
+function depthOn(random, { viewport_h, doc_h, lowest }) {
+  if (random() < TO_THE_BOTTOM_SHARE) return doc_h;
+  if (lowest === null) return viewport_h + random() * random() * Math.max(0, doc_h - viewport_h); // mostly shallow
+  return Math.min(doc_h, Math.max(viewport_h, lowest + between(random, 100, viewport_h)));
+}
+
 /** A point inside a box, usually near its middle: [left, top, width, height] → { x, y }. */
 function pointIn(random, [left, top, width, height]) {
   const offset = () => (random() + random()) / 2;
@@ -306,9 +342,22 @@ function generateSession(random, { baseUrl, now }) {
   let cart = 0;
   const events = [];
 
+  // The page_exit for a page view: its summary at `end`, a moment before the next event.
+  const exitEvent = (common, start, end, lowest) => {
+    const depth = depthOn(random, { viewport_h, doc_h: common.doc_h, lowest });
+    const hunting = common.doc_h > 2 * viewport_h && random() < EXCESSIVE_SCROLL_SHARE;
+    return {
+      ...common,
+      type: 'page_exit',
+      timestamp: new Date(end).toISOString(),
+      ...exitSummary({ start, end, depth, viewport_h, doc_h: common.doc_h, extraDistance: hunting ? 3.5 * common.doc_h : 0 }),
+    };
+  };
+
   for (let visit = 1; ; visit++) {
     const common = {
       session_id,
+      pv_id: `${session_id}_v${visit}`,
       page_url: url,
       ...(referrer && { referrer }),
       viewport_w,
@@ -316,6 +365,8 @@ function generateSession(random, { baseUrl, now }) {
       doc_w: viewport_w,
       doc_h: doc_h[page],
     };
+    const viewStart = time;
+    let lowest = null; // the bottom of the lowest element clicked
     events.push({ ...common, type: 'page_view', timestamp: new Date(time).toISOString() });
 
     let clicks = BEHAVIOUR[page](random, cart).filter(Boolean);
@@ -326,6 +377,7 @@ function generateSession(random, { baseUrl, now }) {
     clicks.forEach((name, i) => {
       const element = ELEMENTS[name];
       const [left, top, width, height] = box[name];
+      lowest = Math.max(lowest ?? 0, top + height);
       // Read for a while, scroll down to the element, then click; later clicks come quicker.
       time +=
         i === 0
@@ -356,20 +408,32 @@ function generateSession(random, { baseUrl, now }) {
     // Some visitors open a link and come straight back (a quick back): the page
     // they left loads again, and the visit carries on there.
     if (next && next !== page && visit < MAX_PAGES_PER_SESSION - 1 && random() < QUICK_BACK_SHARE) {
+      time = Math.round(time + between(random, 0.1, 0.3) * SECOND);
+      events.push(exitEvent(common, viewStart, time, lowest));
       time = Math.round(time + between(random, 0.3, 1.5) * SECOND);
-      events.push({
+      const away = {
         ...common,
-        type: 'page_view',
+        pv_id: `${session_id}_q${visit}`,
         page_url: new URL(PAGES[next], baseUrl).href,
         referrer: url,
         doc_h: doc_h[next],
-        timestamp: new Date(time).toISOString(),
-      });
+      };
+      const awayStart = time;
+      events.push({ ...away, type: 'page_view', timestamp: new Date(time).toISOString() });
       time = Math.round(time + between(random, 2, 6) * SECOND);
+      events.push(exitEvent(away, awayStart, time, null));
+      time = Math.round(time + between(random, 0.1, 0.3) * SECOND);
       continue; // the same page again, with its original referrer
     }
 
-    if (!next) break;
+    if (!next) {
+      // Reads a little longer, then closes the tab.
+      time = Math.round(time + between(random, 2, 20) * SECOND);
+      events.push(exitEvent(common, viewStart, time, lowest));
+      break;
+    }
+    time = Math.round(time + between(random, 0.1, 0.3) * SECOND);
+    events.push(exitEvent(common, viewStart, time, lowest));
     time = Math.round(time + between(random, 0.3, 1.5) * SECOND);
     referrer = url;
     page = next;

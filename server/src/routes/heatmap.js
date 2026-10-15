@@ -6,16 +6,17 @@ import { DEVICES, Event } from '../models/Event.js';
 
 export const HEATMAP_LIMIT = 5000;
 export const ELEMENTS_LIMIT = 50;
+export const ENGAGEMENT_LIMIT = 2000;
 const DEVICE_FILTERS = ['all', ...DEVICES];
 
 const router = express.Router();
 
 /**
- * The clicks on one page that a heatmap view draws or ranks: `page` and
+ * The events of one type on one page that a heatmap view draws: `page` and
  * `device` pick the page and its layout, the segment picks the sessions.
  * Returns `{ pageUrl, device, filter }` or `{ error }`.
  */
-async function pageClicks(query) {
+async function pageEvents(query, type) {
   const { page, device = 'all' } = query;
   if (typeof page !== 'string' || page === '') return { error: 'page is required (one page URL)' };
   if (typeof device !== 'string' || !DEVICE_FILTERS.includes(device)) {
@@ -32,7 +33,7 @@ async function pageClicks(query) {
   }
   const filter = {
     page_url: pageUrl, // the { page_url, type, device } index
-    type: 'click',
+    type,
     ...(device !== 'all' && { device }),
     ...(await eventMatch(parsed.filters)),
   };
@@ -43,7 +44,7 @@ async function pageClicks(query) {
 // names its element (`key`, lib/elements.js) and, when the tracker recorded it,
 // the element's box. total_clicks is uncapped, so the dashboard can say how many are hidden.
 router.get('/heatmap', async (req, res) => {
-  const clicks = await pageClicks(req.query);
+  const clicks = await pageEvents(req.query, 'click');
   if (clicks.error) return res.status(400).json({ error: clicks.error });
   const { pageUrl, device, filter } = clicks;
 
@@ -66,7 +67,7 @@ router.get('/heatmap', async (req, res) => {
 // The page's elements ranked by clicks, for the heatmap's sidebar: the top
 // ELEMENTS_LIMIT, each with its share of the page's clicks and how many sessions clicked it.
 router.get('/elements', async (req, res) => {
-  const clicks = await pageClicks(req.query);
+  const clicks = await pageEvents(req.query, 'click');
   if (clicks.error) return res.status(400).json({ error: clicks.error });
   const { pageUrl, device, filter } = clicks;
 
@@ -107,6 +108,54 @@ router.get('/elements', async (req, res) => {
       share: Math.round((row.clicks / totalClicks) * 10_000) / 10_000,
       sessions: row.sessions.length,
     })),
+  });
+});
+
+// Page-view summaries for the scroll and attention maps: the latest page_exit of
+// each page view (its running totals), newest first, capped at ENGAGEMENT_LIMIT.
+// page_views is the uncapped count of page views with a summary.
+router.get('/engagement', async (req, res) => {
+  const exits = await pageEvents(req.query, 'page_exit');
+  if (exits.error) return res.status(400).json({ error: exits.error });
+  const { pageUrl, device, filter } = exits;
+
+  const [result] = await Event.aggregate([
+    { $match: filter },
+    {
+      $group: {
+        _id: '$pv_id',
+        latest: {
+          $top: {
+            sortBy: { timestamp: -1, _id: -1 },
+            output: {
+              timestamp: '$timestamp',
+              scroll_depth: '$scroll_depth',
+              scroll_distance: '$scroll_distance',
+              active_ms: '$active_ms',
+              bands: '$bands',
+              viewport_w: '$viewport_w',
+              viewport_h: '$viewport_h',
+              doc_w: '$doc_w',
+              doc_h: '$doc_h',
+              device: '$device',
+            },
+          },
+        },
+      },
+    },
+    {
+      $facet: {
+        total: [{ $count: 'count' }],
+        views: [{ $sort: { 'latest.timestamp': -1, _id: 1 } }, { $limit: ENGAGEMENT_LIMIT }],
+      },
+    },
+  ]);
+
+  res.json({
+    page_url: pageUrl,
+    device,
+    page_views: result.total[0]?.count ?? 0,
+    views: result.views.map(({ latest: { timestamp, ...view } }) => view),
   });
 });
 

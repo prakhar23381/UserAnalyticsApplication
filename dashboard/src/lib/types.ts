@@ -123,6 +123,27 @@ export interface HeatmapResponse {
   clicks: HeatmapClick[];
 }
 
+/** One page view's latest totals (GET /api/engagement) */
+export interface EngagementView {
+  scroll_depth: number; // deepest px seen
+  scroll_distance: number;
+  active_ms: number;
+  bands: number[]; // active ms per 50 px band on screen
+  viewport_w: number;
+  viewport_h: number;
+  doc_w: number;
+  doc_h: number;
+  device: Device;
+}
+
+/** GET /api/engagement */
+export interface EngagementResponse {
+  page_url: string;
+  device: Device | 'all';
+  page_views: number; // with a summary; uncapped
+  views: EngagementView[]; // the newest 2000
+}
+
 /** One row of GET /api/elements */
 export interface RankedElement {
   rank: number;

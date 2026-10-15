@@ -130,7 +130,7 @@ Toolchain facts that are easy to get wrong:
 │   │   │                         (rebuildSessions, ensureSessions), filters.js (the segment parser),
 │   │   │                         insights.js (rage / dead / quick back), elements.js (element keys)
 │   │   ├── middleware/           cors.js (ingestCors, readCors), rateLimit.js (POST /api/events), errorHandler.js
-│   │   └── routes/               events.js, sessions.js, pages.js, heatmap.js (+ /elements), overview.js, filterOptions.js
+│   │   └── routes/               events.js, sessions.js, pages.js, heatmap.js (+ /elements, /engagement), overview.js, filterOptions.js
 │   ├── .env                      local only, git-ignored (created from .env.example)
 │   ├── public/
 │   │   ├── tracker.js            the tracking script, served as-is at /tracker.js
@@ -151,19 +151,19 @@ Toolchain facts that are easy to get wrong:
 │       │                         Dashboard, OverviewTab (+ overview/: StatTile, InsightCards, SessionsChart (Recharts),
 │       │                         DeviceSplit, TopPages, ValueBars, Watchlist), InsightChip, SessionsTab, SessionsTable,
 │       │                         SessionJourney, EventTimeline, EventBadge, HeatmapView, Heatmap (dots, grid,
-│       │                         canvas heat, badges), ElementsSidebar, PageSelector,
+│       │                         canvas heat, badges, scroll/attention rows), ElementsSidebar, EngagementMaps, PageSelector,
 │       │                         ToggleGroup, DeviceLabel, Pagination, PageHeading, States, RelativeTime,
 │       │                         lab/ (Lab, ScreensSection, ComponentsSection, TokensSection, fixtures)
 │       └── lib/                  config.ts (API_URL, DEMO_URL; server-safe), api.ts (useApi, URLs), url.ts
 │                                 (query-string state), filters.ts (segment: presets, FILTER_DEFS, labels, API params), navigation.ts
 │                                 (useDashboardHref, useFilters, useApiFilters), segments.ts (saved segments, watchlist;
 │                                 pure), storage.ts (localStorage hooks, guarded), overview.ts (deltas, number
-│                                 formats), insights.ts (labels, shares), types.ts, format.ts, journey.ts, heatmap.ts,
+│                                 formats), insights.ts (labels, shares), engagement.ts (scroll / attention maps), types.ts, format.ts, journey.ts, heatmap.ts,
 │                                 *.test.ts (Vitest)
 ├── scratch/                      git-ignored; browser-check.mjs, measure-layout.mjs, dashboard-check.mjs,
 │                                 iframe-debug.mjs, e2e-check.mjs (Phase 6; headless Brave over CDP),
 │                                 dead-click-check.mjs (M3b), demo-selectors.mjs, element-check.mjs,
-│                                 area-check.mjs (M4), shots/,
+│                                 area-check.mjs (M4), exit-check.mjs (M5), shots/,
 │                                 readme-check/ (fresh clone from the README check)
 └── .gitignore
 ```

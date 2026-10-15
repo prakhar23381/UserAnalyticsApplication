@@ -108,6 +108,7 @@ Toolchain facts that are easy to get wrong:
 ```text
 <root>/
 ├── CLAUDE.md                     agent rules (this file)
+├── LICENSE                       MIT
 ├── README.md                     for hiring reviewers: setup, API reference, trade-offs (live links after Phase 7)
 ├── .claude/agents/
 │   └── causalfunnel-engineer.md  symlink → ../../CLAUDE.md

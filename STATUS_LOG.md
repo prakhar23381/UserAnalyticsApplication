@@ -2,6 +2,9 @@
 
 *Permanent record, newest first. Append only: never edit or delete past entries.*
 
+## 2026-10-16 — MIT licence
+- Added `LICENSE` (MIT) so the public repo, including the agent rules (`CLAUDE.md`, `.claude/agents/`), is open source. User-approved; pushed to `main` with the v2 bookkeeping commit.
+
 ## 2026-10-15 — Trailmark v2 released to production (`main` = `133815f`)
 - User chose to ship v2 (M1–M5) now; M6 stays planned work (README "What I'd do next").
 - Checks before release: Atlas cluster runs MongoDB 8.0.34 (`$top` supported; read-only

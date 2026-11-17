@@ -1,12 +1,11 @@
 # Trailmark: user analytics
 
-Trailmark is a small full-stack analytics app, built as the take-home for
-CausalFunnel's Full Stack Engineer role. A dependency-free script (`tracker.js`) records
+Trailmark is a small full-stack analytics app. A dependency-free script (`tracker.js`) records
 `page_view` and `click` events on any web page (plus a `page_exit` summary of
 each page view) and sends them to a Node/Express API, which validates them and
 stores them in MongoDB. A Next.js dashboard lists the sessions, replays each one
 as an ordered user journey, and draws per-page click heatmaps over the page
-itself. Beyond the brief: segment filters, frustration insights (rage clicks,
+itself. It also has segment filters, frustration insights (rage clicks,
 dead clicks, quick backs, excessive scrolling), ranked elements, and scroll and
 attention maps. A three-page demo shop (Acme
 Roasters, fictional) and a seed script supply data to look at.
@@ -172,8 +171,6 @@ counts on its summary:
 | Dashboard | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, SWR, Recharts, lucide-react | Polling with SWR makes the dashboard live without websockets; Recharts draws the charts; every icon has a text label |
 | Tests | Vitest, supertest, mongodb-memory-server, happy-dom | Real MongoDB queries without a running database. The tracker runs in a simulated browser |
 | Hosting | Render (API, tracker, demo pages), Vercel (dashboard), MongoDB Atlas M0 | All free tiers |
-
-The spec allows Node.js or Flask. This project uses Node only.
 
 ## Run it locally
 
@@ -957,7 +954,6 @@ collection, the API then builds it from the events.
 ├── package.json                npm workspaces: server, dashboard
 ├── render.yaml                 Render Blueprint for the API
 ├── docs/
-│   ├── assignment.md           the original spec
 │   └── images/                 README screenshots
 ├── server/                     Express API (ESM JavaScript, Node 22.12+)
 │   ├── src/

@@ -1,7 +1,7 @@
 # CausalFunnel — TODO
 
-Tracker script → Node API → MongoDB → Next.js dashboard. Spec: `docs/assignment.md`.
-Built, deployed and seeded (2026-10-14); every spec requirement checked on the
+Tracker script → Node API → MongoDB → Next.js dashboard.
+Built, deployed and seeded (2026-10-14); every requirement checked on the
 live site. Live links are at the top of `README.md`.
 
 Priority tags: **[M]** must (spec requirement) · **[S]** should · **[X]** stretch
@@ -11,11 +11,10 @@ Priority tags: **[M]** must (spec requirement) · **[S]** should · **[X]** stre
 
 ---
 
-## 1. Submission
+## 1. Operations
 
-- [ ] **[M]** (user) Submit the repo link and the live links
 - [ ] **[S]** (user) UptimeRobot monitor on `https://useranalytics-api.onrender.com/health` every 5 min (option a, chosen 2026-10-14). Keeps the free Render API awake: one service 24/7 uses ≤ 744 of the 750 free hours a month; don't run a second always-on free service in the same workspace
-- [ ] **[S]** (user, after submitting) Rotate the Atlas database user's password (it was pasted into the chat) and update `MONGODB_URI` on Render
+- [ ] **[S]** (user) Rotate the Atlas database user's password (it was pasted into the chat) and update `MONGODB_URI` on Render
 
 ---
 
@@ -31,7 +30,7 @@ Priority tags: **[M]** must (spec requirement) · **[S]** should · **[X]** stre
 ## 3. Phase 9 — Trailmark v2 (M1–M5 live since 2026-10-15; M6 planned)
 
 Plan and decisions: `docs/v2-plan.md` (approved direction 2026-10-15). Work on the
-`v2` branch; `main` stays the submitted version. **Each milestone needs its own
+`v2` branch; `main` stays the released version. **Each milestone needs its own
 detailed plan and approval before code changes.**
 
 - [ ] **[S] M6** Custom tags (`window.trailmark.tag`), session labels, comparing two segments, privacy opt-outs (`data-cf-ignore`, `data-strip-query`), single-page-app page views

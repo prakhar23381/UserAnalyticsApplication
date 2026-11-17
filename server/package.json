@@ -2,7 +2,7 @@
   "name": "server",
   "version": "1.0.0",
   "private": true,
-  "description": "CausalFunnel analytics API: event ingestion, sessions, heatmap data; also serves tracker.js and the demo pages",
+  "description": "Trailmark analytics API: event ingestion, sessions, heatmap data; also serves tracker.js and the demo pages",
   "type": "module",
   "main": "src/index.js",
   "scripts": {

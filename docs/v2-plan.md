@@ -2,9 +2,9 @@
 
 *Approved direction, 2026-10-15. Each milestone still gets its own detailed plan
 and approval before any code changes (CLAUDE.md §5). Work happens on the `v2`
-branch; `main` stays the submitted version until v2 is ready.*
+branch; `main` stays the released version until v2 is ready.*
 
-Trailmark is the new name for the product built for the CausalFunnel take-home:
+Trailmark is the new name for this project:
 a tracker script, an API and a dashboard for sessions and heatmaps. Layout ideas
 are taken from Microsoft Clarity's heatmap and insights screens, without its
 branding.
@@ -125,7 +125,7 @@ backs, campaigns, browsers, countries, scroll depth and attention.
 
 | # | Milestone | Size |
 |---|---|---|
-| M0 | Current version submitted from `main`; v2 work on `v2` | — |
+| M0 | Current version released from `main`; v2 work on `v2` | — |
 | M1 | Brand, design system, icons, the one-page layout with tabs; filter bar with date range and device; Overview with totals and charts | M–L |
 | M2 | Segments: `sessions` collection and backfill, enrichment, every filter on every tab, saved segments, default, watchlist; D5 check | L |
 | M3 | Insights: rage clicks, quick backs, dead clicks; Overview insight cards; session insight chips | M–L |

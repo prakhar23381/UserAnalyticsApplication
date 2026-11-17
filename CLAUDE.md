@@ -17,10 +17,10 @@ the `causalfunnel-engineer` subagent reads it through the symlink
 - **Project Name:** `CausalFunnel`
 - **Project Root:** `/Users/PrakharSaxena/Documents/Code/CausalFunnel`
 - **Target Branch:** `main` · **Remote:** `origin` = `https://github.com/prakhar23381/UserAnalyticsApplication` (public)
-- **Purpose:** Take-home assignment for CausalFunnel's Full Stack Engineer role.
+- **Purpose:** Trailmark, a small user-analytics app.
   An embeddable script tracks `page_view` and `click` events on a webpage, an
   API stores them in MongoDB, and a dashboard shows sessions (user journeys)
-  and per-page click heatmaps. The readers are hiring reviewers: decisions,
+  and per-page click heatmaps. The readers are reviewers: decisions,
   code quality and the README count as much as features.
 - **Stack:**
   - **Tracker:** vanilla JS IIFE, **zero dependencies — keep it that way.**
@@ -41,7 +41,6 @@ the `causalfunnel-engineer` subagent reads it through the symlink
 | Component | Path |
 |---|---|
 | **Repo / local repo** | `<root>` = `/Users/PrakharSaxena/Documents/Code/CausalFunnel` |
-| **Assignment spec** (source of truth for requirements) | `<root>/docs/assignment.md` |
 | **Build plan** | `<root>/TODO.md` |
 | **Backend source** | `<root>/server/src` |
 | **Tracker** | `<root>/server/public/tracker.js` (served at `/tracker.js`) |
@@ -82,7 +81,7 @@ Toolchain facts that are easy to get wrong:
 - The root `package.json` **overrides** `react-is` to 19.3.0 (Recharts' peer must match React 19; the hoisted copy was 16) and `immer` to 11.1.18 (11.1.19–21 were under two weeks old). Peers come from the shared root copy, so a scoped override can't do it. Don't run `npm dedupe` casually: it also bumped unrelated packages (postcss) to days-old releases.
 - The dashboard's `next dev` can miss a `globals.css` change and keep serving stale Tailwind output (new token classes missing). Restart the dashboard dev server; `touch` isn't enough.
 - Dark mode follows `data-theme` on `<html>` (set before paint by the script in `layout.tsx`; `?theme=light|dark` forces it), not the media query. The brand scale is `@theme static` so every shade exists as a CSS variable.
-- There is no Python and no virtualenv. Flask is allowed by the spec, but this project doesn't use it.
+- There is no Python and no virtualenv. The project doesn't use Flask.
 - Add dependencies with `npm i <pkg> -w server` or `-w dashboard` from `<root>`, never with `npm install` inside a workspace folder.
 - The server is ESM (`"type": "module"`), so relative imports need the `.js` extension.
 - When an npm-workspace script takes arguments, they follow the workspace command: `npm -w server run seed -- --reset`.
@@ -109,12 +108,11 @@ Toolchain facts that are easy to get wrong:
 <root>/
 ├── CLAUDE.md                     agent rules (this file)
 ├── LICENSE                       MIT
-├── README.md                     for hiring reviewers: setup, API reference, trade-offs (live links after Phase 7)
+├── README.md                     for reviewers: setup, API reference, trade-offs (live links after Phase 7)
 ├── .claude/agents/
 │   └── causalfunnel-engineer.md  symlink → ../../CLAUDE.md
 ├── TODO.md  STATUS_LOG.md  .agent_recovery_context.md
 ├── docs/
-│   ├── assignment.md             the spec (read-only)
 │   ├── v2-plan.md                Trailmark v2: decisions, layout, milestones (branch v2)
 │   └── images/                   README screenshots (sessions, journey, heatmap; scratch/dashboard-check.mjs)
 ├── package.json  package-lock.json   npm workspaces (server, dashboard); root devDep: concurrently
@@ -182,7 +180,7 @@ trade-offs in the README instead.
 - **Formats:** JSON for API traffic. The tracker sends JSON with
   `Content-Type: text/plain` (sendBeacon / CORS-safelisted). Timestamps are
   ISO 8601 UTC on the wire and `Date` in Mongo. Field names are **snake_case**
-  everywhere (DB, API, dashboard types), matching the spec's `session_id`.
+  everywhere (DB, API, dashboard types), e.g. `session_id`.
 - **Build output:** `<root>/dashboard/.next` only.
 - **Diagnostics and scratch files:** `<root>/artifacts/` or `<root>/scratch/` (both git-ignored).
 - **Writable:** `server/{src,public,scripts,test}/`, `dashboard/src/`,
@@ -190,8 +188,7 @@ trade-offs in the README instead.
   `docker-compose.yml`, `.gitignore`, `README.md`), workspace config
   (`server/package.json`, `server/vitest.config.js`, `dashboard/` config
   files), and the three bookkeeping files.
-- **Read-only:** `node_modules/`, `dashboard/.next/`, `.git/`, and the
-  assignment spec. Never edit the requirements.
+- **Read-only:** `node_modules/`, `dashboard/.next/` and `.git/`.
 - **Environment:** the server reads `server/.env` (`PORT`, `MONGODB_URI`, `NODE_ENV`,
   `DASHBOARD_ORIGIN`). The dashboard reads `dashboard/.env.local`
   (`NEXT_PUBLIC_API_URL`). Only `NEXT_PUBLIC_`-prefixed vars reach the browser,
@@ -243,8 +240,8 @@ trade-offs in the README instead.
 No source file changes without passing through these phases in order.
 
 ### Phase 1: Plan
-- Read `.agent_recovery_context.md` first, then `TODO.md`, the assignment
-  spec, and the existing code you will touch. Trust the recovery context over
+- Read `.agent_recovery_context.md` first, then `TODO.md`,
+  and the existing code you will touch. Trust the recovery context over
   your own assumptions, and the code over both.
 - Produce a plan: the design, the exact files to touch, and any breaking
   changes (API shape, schema fields, indexes, tracker payload).
@@ -268,7 +265,7 @@ No source file changes without passing through these phases in order.
 - [ ] Tracker or demo changes: checked in a browser at `http://localhost:4000/demo/`. In the Network tab, batches go out as `text/plain` and get 202. A beacon fires on navigation, and the console shows no errors on the host page.
 - [ ] API or schema changes: response shapes still match `dashboard/src/lib/types.ts`, and indexes still cover every query (§4)
 - [ ] Check for regressions and race conditions in async actions, state updates and API calls. Watch for SWR polling overlapping navigation, and for batch flushes overlapping `pagehide`.
-- [ ] Every **[M]** requirement in the spec still works end to end
+- [ ] Every **[M]** requirement still works end to end
 - [ ] Suggest up to 3 improvements
 - [ ] Document new endpoints, fields or decisions in `README.md` (API reference / data model / trade-offs) or `docs/`
 - [ ] Move finished items out of `TODO.md` into `STATUS_LOG.md` (see §9)
@@ -344,7 +341,7 @@ transient broken states.
   without explicit approval.
 - **Protected data:** never overwrite, delete or alter seed data in production,
   live environment files (`server/.env`, `dashboard/.env.local`), the
-  assignment spec, or historical event data. This holds even when a plan
+  or historical event data. This holds even when a plan
   containing such a change has been approved, so ask for the second
   confirmation.
 - **Secrets never reach git:** no Atlas URI, password or `.env` contents in

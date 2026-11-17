@@ -204,7 +204,7 @@ Plan and decisions M3-D1–D4 in `docs/v2-plan.md` ("M3 in detail"). Three local
 
 ## 2026-10-15 — v2 M1a: Trailmark look, one-page layout, UI lab (branch `v2`)
 - **Pushed `main` first** (user asked): `da87007` and `8577f33` → `origin/main` = `8577f33`,
-  the submitted version. All v2 work is on the local branch `v2`; the plan is
+  the released version. All v2 work is on the local branch `v2`; the plan is
   `docs/v2-plan.md` (`2939c8d`).
 - **Brand:** Trailmark name, logo mark (dotted trail into a ring), favicon (`#4f39f6`, the
   brand-600 oklch converted to hex), titles, README title and intro, tracker and demo-page
@@ -231,17 +231,17 @@ Plan and decisions M3-D1–D4 in `docs/v2-plan.md` ("M3 in detail"). Three local
   screenshots (light, dark, phone 390 with no sideways overflow) show no console or network
   errors.
 
-## 2026-10-15 — Submission checks, Akshara review, TODO reset
-- **Requirements audit** against `docs/assignment.md`, on the live site: every
+## 2026-10-15 — Release checks, review, TODO reset
+- **Requirements audit** on the live site: every
   item met (tracker events and fields, the 4 APIs, MongoDB, sessions view and
   journey, heatmap page picker with dots/grid, hosting, public repo, README
-  with setup, stack and trade-offs). This closes the final-submission
-  checklist except the user's submit step: repo public (raw files load without
+  with setup, stack and trade-offs). This closes the final release
+  checklist: repo public (raw files load without
   sign-in), no secrets in history (scanned), fresh-clone setup verified, tests
   and lint clean, live links work, production seeded.
 - Pushed `3a71742` and `2c4d18f` (user-approved). `da87007` adds `*.env` to
   `.gitignore` (local only): a root `atlas-credentials.env` wasn't covered by the
-  `.env` rules. An empty root `assignment.md` was deleted at the user's OK.
+  `.env` rules.
 - **Keep-alive:** the user chose an external monitor (UptimeRobot, 5 min) over
   a GitHub Actions schedule. Render's free tier: 15 min idle → spin-down,
   750 free instance hours a month, suspension rather than billing when hours
@@ -252,7 +252,7 @@ Plan and decisions M3-D1–D4 in `docs/v2-plan.md` ("M3 in detail"). Three local
   child ids from `/report?child=…` on the unauthenticated dashboard. Proposed
   opt-outs (`data-cf-ignore`, `data-strip-query`) are now TODO items. Nothing
   in the Akshara repo was changed.
-- `TODO.md` rewritten to outstanding work only: submission steps, items still
+- `TODO.md` rewritten to outstanding work only: operations steps, items still
   open from the build, and a planning section (Phase 9) for the user's new
   features: top elements, element click heatmap, scroll heatmap, area heatmap,
   attention map and a dashboard UI pass.
@@ -362,7 +362,7 @@ Plan and decisions M3-D1–D4 in `docs/v2-plan.md` ("M3 in detail"). Three local
   145 passed.
 
 ## 2026-10-14 — Phase 8: README
-- `README.md` for hiring reviewers: summary, screenshots, how it works (ASCII
+- `README.md` for reviewers: summary, screenshots, how it works (ASCII
   diagram, event flow, how the heatmap places clicks), tech stack, local
   setup with configuration and test commands, embedding the tracker (fields,
   privacy, behaviour), the seed script, the API reference (5 endpoints with
@@ -689,7 +689,7 @@ Plan and decisions M3-D1–D4 in `docs/v2-plan.md` ("M3 in detail"). Three local
   context.
 
 ## 2026-10-12 — Phase 0: setup
-- `git init -b main`. Moved the spec to `docs/assignment.md` (sha256
+- `git init -b main`. Moved the spec into `docs/` (sha256
   unchanged) and pointed `CLAUDE.md` / `TODO.md` at the new path.
 - Initial commit `b7c2bb9`: spec, build plan, agent rules, bookkeeping,
   `.gitignore`.
@@ -710,7 +710,7 @@ Plan and decisions M3-D1–D4 in `docs/v2-plan.md` ("M3 in detail"). Three local
   (created empty on github.com). Not pushed.
 
 ## 2026-10-12
-- Analysed the assignment spec. Found gaps the spec leaves open: when a session
+- Analysed the spec. Found gaps the spec leaves open: when a session
   expires, click coordinates differing across screen sizes, which URL variants
   count as the same page, the page-list endpoint the heatmap implies, and
   client vs server timestamps.
